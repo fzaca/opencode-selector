@@ -215,6 +215,23 @@ impl Theme {
             .add_modifier(Modifier::BOLD)
     }
 
+    pub fn user_message(self) -> Style {
+        Style::default()
+            .fg(Color::Cyan)
+            .bg(self.background)
+            .add_modifier(Modifier::BOLD)
+    }
+
+    pub fn assistant_message(self) -> Style {
+        Style::default()
+            .fg(Color::Yellow)
+            .bg(self.background)
+            .add_modifier(Modifier::BOLD)
+    }
+
+    pub fn gutter(self) -> Style {
+        Style::default().fg(self.border).bg(self.background)
+    }
 }
 
 #[cfg(test)]

@@ -141,10 +141,7 @@ fn draw_command_bar(f: &mut Frame, app: &App, area: Rect, theme: Theme) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints(if has_suggestions {
-            vec![
-                Constraint::Length(suggestion_rows),
-                Constraint::Length(3),
-            ]
+            vec![Constraint::Length(suggestion_rows), Constraint::Length(3)]
         } else {
             vec![Constraint::Length(3)]
         })

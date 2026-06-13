@@ -1,7 +1,7 @@
 use ratatui::{
     Frame,
     layout::{Alignment, Rect},
-    style::Stylize,
+    style::Modifier,
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, Paragraph, Wrap},
 };
@@ -24,8 +24,7 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect, theme: Theme) {
 
     let inner = block.inner(area);
     let available = inner.height as usize;
-
-    let mut lines = vec![
+    let mut lines: Vec<Line> = vec![
         meta_line("ID", &session.id, theme),
         meta_line("Slug", &session.slug, theme),
         meta_line("Project", &session.project_name, theme),
@@ -34,7 +33,10 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect, theme: Theme) {
         meta_line("Files changed", &session.summary_files.to_string(), theme),
         meta_line(
             "Updated",
-            &session.updated_at.format("%Y-%m-%d %H:%M:%S UTC").to_string(),
+            &session
+                .updated_at
+                .format("%Y-%m-%d %H:%M:%S UTC")
+                .to_string(),
             theme,
         ),
     ];
@@ -42,26 +44,42 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect, theme: Theme) {
     lines.push(Line::raw(""));
 
     if session.messages.is_empty() {
-        if let Some(ref preview) = session.first_message_preview {
-            lines.push(Line::styled("Messages:", theme.accent()));
-            for line in preview.lines() {
-                lines.push(Line::raw(line.to_string()));
-            }
-        } else {
+        if session.first_message_preview.is_some() {
             lines.push(Line::styled("(loading messages...)", theme.dim()));
+        } else {
+            lines.push(Line::styled("(no messages)", theme.dim()));
         }
     } else {
-        for (role, text) in &session.messages {
-            let role_style = if role == "assistant" {
-                theme.success().dim()
+        for (role, text) in session.messages.iter() {
+            let is_user = role == "user";
+            let role_style = if is_user {
+                theme.user_message()
             } else {
-                theme.accent().dim()
+                theme.assistant_message()
             };
-            lines.push(Line::styled(format!("── {role} ──"), role_style));
+            let role_label = if is_user { " YOU " } else { " AI  " };
+
+            let header = Line::from(vec![
+                Span::styled(" │ ", theme.gutter()),
+                Span::styled(format!("──{role_label}──"), role_style),
+            ]);
+            lines.push(header);
+
             for line in text.lines() {
-                lines.push(Line::raw(line.to_string()));
+                lines.push(Line::from(vec![
+                    Span::styled(" │ ", theme.gutter()),
+                    Span::raw(line.to_string()),
+                ]));
             }
-            lines.push(Line::raw(""));
+
+            if is_user {
+                lines.push(Line::styled(
+                    " │",
+                    theme.gutter().add_modifier(Modifier::DIM),
+                ));
+            } else {
+                lines.push(Line::styled(" │", theme.gutter()));
+            }
         }
     }
 
@@ -83,14 +101,11 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect, theme: Theme) {
     );
 
     if total > available {
+        let pos = format!(" {}:{} ", scroll + 1, total);
         f.render_widget(
-            Paragraph::new(format!(
-                " {}:{} ",
-                scroll + 1,
-                total
-            ))
-            .style(theme.dim())
-            .alignment(Alignment::Right),
+            Paragraph::new(pos)
+                .style(theme.dim())
+                .alignment(Alignment::Right),
             Rect {
                 x: inner.x,
                 y: inner.y + inner.height - 1,
@@ -103,7 +118,7 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect, theme: Theme) {
 
 fn meta_line<'a>(label: &str, value: &str, theme: Theme) -> Line<'a> {
     Line::from(vec![
-        Span::styled(format!("{label}: "), theme.accent()),
+        Span::styled(format!("  {label}: "), theme.accent()),
         Span::raw(value.to_string()),
     ])
 }

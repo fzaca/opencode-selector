@@ -28,68 +28,69 @@ pub fn draw(f: &mut Frame, app: &App, area: Rect, theme: Theme) {
         return;
     }
 
-    let show_badge = should_show_mode_badge(app);
+    let mode_badge = mode_label(app);
+    let pos_label = position_label(app);
 
-    if show_badge {
-        let chunks = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Length(mode_width(app)),
-                Constraint::Min(12),
-                Constraint::Length(shortcut_width(app)),
-            ])
-            .split(inner);
+    let left_width = (mode_badge.chars().count() as u16 + 2).max(8);
 
-        let mode = Line::from(vec![Span::styled(
-            format!(" {} ", mode_label(app)),
-            theme.badge(),
-        )]);
-        f.render_widget(Paragraph::new(mode), chunks[0]);
+    let right_width = shortcut_width(app);
 
-        let context = Line::from(vec![
-            Span::styled("filter: ", theme.dim()),
-            Span::styled(context_label(app), theme.accent()),
-            Span::styled("  sort: ", theme.dim()),
-            Span::styled(sort_label(app.sort_by), theme.accent()),
-        ]);
-        f.render_widget(Paragraph::new(context), chunks[1]);
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Length(left_width),
+            Constraint::Min(12),
+            Constraint::Length(right_width),
+        ])
+        .split(inner);
 
-        let shortcuts = Line::from(shortcuts(app, theme));
-        f.render_widget(
-            Paragraph::new(shortcuts).alignment(Alignment::Right),
-            chunks[2],
-        );
-    } else {
-        let chunks = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([Constraint::Min(12), Constraint::Length(shortcut_width(app))])
-            .split(inner);
+    let mode = Line::from(vec![Span::styled(
+        format!(" {} ", mode_badge),
+        theme.badge(),
+    )]);
+    f.render_widget(Paragraph::new(mode), chunks[0]);
 
-        let context = Line::from(vec![
-            Span::styled("filter: ", theme.dim()),
-            Span::styled(context_label(app), theme.accent()),
-            Span::styled("  sort: ", theme.dim()),
-            Span::styled(sort_label(app.sort_by), theme.accent()),
-        ]);
-        f.render_widget(Paragraph::new(context), chunks[0]);
-
-        let shortcuts = Line::from(shortcuts(app, theme));
-        f.render_widget(
-            Paragraph::new(shortcuts).alignment(Alignment::Right),
-            chunks[1],
-        );
+    let mut center_spans = vec![
+        Span::styled("pos: ", theme.dim()),
+        Span::styled(pos_label, theme.accent()),
+        Span::styled("  sort: ", theme.dim()),
+        Span::styled(sort_label(app.sort_by), theme.accent()),
+    ];
+    if app.search_query.is_empty() && app.project_filter.is_none() {
+        let total = app.filtered_indices.len();
+        center_spans.push(Span::styled("  total: ", theme.dim()));
+        center_spans.push(Span::styled(total.to_string(), theme.accent()));
     }
+    if !app.search_query.is_empty() {
+        let q = truncate(&app.search_query, 20);
+        center_spans.push(Span::styled("  search: ", theme.dim()));
+        center_spans.push(Span::styled(q, theme.success()));
+    }
+    if let Some(ref pid) = app.project_filter {
+        let p = truncate(pid, 15);
+        center_spans.push(Span::styled("  project: ", theme.dim()));
+        center_spans.push(Span::styled(p, theme.success()));
+    }
+
+    let center = Line::from(center_spans);
+    f.render_widget(Paragraph::new(center), chunks[1]);
+
+    let shortcuts = Line::from(shortcuts(app, theme));
+    f.render_widget(
+        Paragraph::new(shortcuts).alignment(Alignment::Right),
+        chunks[2],
+    );
 }
 
-fn should_show_mode_badge(app: &App) -> bool {
-    !(app.screen == Screen::Main && app.input_mode == InputMode::Normal)
-}
-
-fn context_label(app: &App) -> String {
-    if app.global_mode {
-        "global".to_string()
+fn position_label(app: &App) -> String {
+    if app.filtered_indices.is_empty() {
+        "0/0".to_string()
     } else {
-        "cwd".to_string()
+        format!(
+            "{}/{}",
+            app.selected_session + 1,
+            app.filtered_indices.len()
+        )
     }
 }
 
@@ -120,10 +121,6 @@ fn mode_label(app: &App) -> String {
     }
 }
 
-fn mode_width(app: &App) -> u16 {
-    (mode_label(app).chars().count() + 2).max(8) as u16
-}
-
 fn shortcuts<'a>(app: &App, theme: Theme) -> Vec<Span<'a>> {
     let key = |k: &'a str| Span::styled(k, theme.accent().add_modifier(Modifier::BOLD));
 
@@ -135,7 +132,14 @@ fn shortcuts<'a>(app: &App, theme: Theme) -> Vec<Span<'a>> {
             Span::raw(" clear"),
         ],
         _ => match app.screen {
-            Screen::Main => vec![key("?"), Span::raw(" help "), key("q"), Span::raw(" quit")],
+            Screen::Main => vec![
+                key("?"),
+                Span::raw(" help "),
+                key("p"),
+                Span::raw(" prev "),
+                key("q"),
+                Span::raw(" quit"),
+            ],
             _ => vec![key("Esc"), Span::raw(" back")],
         },
     }

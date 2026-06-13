@@ -30,7 +30,7 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect, theme: Theme) {
         return;
     }
 
-    let inner_width = area.width.saturating_sub(4).max(10) as usize;
+    let inner_width = area.width.saturating_sub(6).max(10) as usize;
 
     let items: Vec<ListItem> = app
         .filtered_indices
@@ -39,13 +39,19 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect, theme: Theme) {
         .map(|(visible_idx, &session_idx)| {
             let session = &app.sessions[session_idx];
             let is_selected = visible_idx == app.selected_session;
-            ListItem::new(session_item(session, inner_width, theme, is_selected)).style(
-                if is_selected {
-                    theme.selected()
-                } else {
-                    theme.default_style()
-                },
-            )
+            let prefix = if is_selected { "▶ " } else { "  " };
+            ListItem::new(session_item(
+                session,
+                inner_width,
+                theme,
+                is_selected,
+                prefix,
+            ))
+            .style(if is_selected {
+                theme.selected()
+            } else {
+                theme.default_style()
+            })
         })
         .collect();
 
@@ -53,7 +59,7 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect, theme: Theme) {
     let list = List::new(items)
         .block(block)
         .highlight_style(theme.selected())
-        .highlight_symbol("▸ ");
+        .highlight_symbol("");
 
     f.render_stateful_widget(list, area, &mut state);
 }
@@ -63,6 +69,7 @@ fn session_item<'a>(
     width: usize,
     theme: Theme,
     selected: bool,
+    prefix: &'a str,
 ) -> Vec<Line<'a>> {
     let title_style = if selected {
         theme.selected()
@@ -77,26 +84,32 @@ fn session_item<'a>(
 
     let title = truncate(session.display_title(), width);
     let meta = format!(
-        "{} · {}",
+        "{}  {}",
         relative_time(session.updated_at),
         session.project_name,
     );
 
     let mut lines = vec![
-        Line::from(vec![Span::styled(title, title_style)]),
-        Line::from(vec![Span::styled(truncate(&meta, width), meta_style)]),
+        Line::from(vec![Span::raw(prefix), Span::styled(title, title_style)]),
+        Line::from(vec![
+            Span::raw("  "),
+            Span::styled(truncate(&meta, width), meta_style),
+        ]),
     ];
 
     if let Some(preview) = session.first_message_preview.as_deref() {
         let preview_text = truncate(preview, width);
-        lines.push(Line::from(vec![Span::styled(
-            preview_text,
-            if selected {
-                theme.selected_dim()
-            } else {
-                theme.muted()
-            },
-        )]));
+        lines.push(Line::from(vec![
+            Span::raw("  "),
+            Span::styled(
+                preview_text,
+                if selected {
+                    theme.selected_dim()
+                } else {
+                    theme.muted()
+                },
+            ),
+        ]));
     }
 
     lines
