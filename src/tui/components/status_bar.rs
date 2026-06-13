@@ -21,12 +21,22 @@ pub fn draw(f: &mut Frame, app: &App, area: Rect, theme: Theme) {
     } else {
         spans.push(Span::styled(mode_label(app), theme.highlight()));
         spans.push(Span::raw(" | "));
+        spans.push(Span::styled(project_label(app), theme.accent()));
+        spans.push(Span::raw(" | "));
         spans.extend(shortcuts(app, theme));
     }
 
     let line = Line::from(spans);
     let paragraph = Paragraph::new(line).block(block);
     f.render_widget(paragraph, area);
+}
+
+fn project_label(app: &App) -> String {
+    if app.project_filter.is_some() {
+        "project".to_string()
+    } else {
+        "all projects".to_string()
+    }
 }
 
 fn mode_label(app: &App) -> String {
@@ -65,6 +75,7 @@ fn shortcuts<'a>(app: &App, theme: Theme) -> Vec<Span<'a>> {
                 Span::raw("m: move  "),
                 Span::raw("d: archive  "),
                 Span::raw("D: delete  "),
+                Span::raw("P: projects  "),
                 Span::raw("?: help  "),
                 Span::styled("q", theme.accent().add_modifier(Modifier::BOLD)),
                 Span::raw(": quit"),

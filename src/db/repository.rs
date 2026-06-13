@@ -48,6 +48,47 @@ impl SessionRepository {
         Ok(projects)
     }
 
+    /// Load project directories.
+    pub fn project_directories(&self) -> Result<Vec<(String, String)>> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT project_id, directory FROM project_directory")
+            .context("failed to prepare project_directory query")?;
+        let rows = stmt
+            .query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })
+            .context("failed to query project directories")?;
+
+        let mut dirs = Vec::new();
+        for row in rows {
+            dirs.push(row.context("failed to read project_directory row")?);
+        }
+        Ok(dirs)
+    }
+
+    /// Find the project ID whose directory matches or contains the given path.
+    pub fn find_project_for_path(&self, path: impl AsRef<Path>) -> Result<Option<String>> {
+        let target = std::fs::canonicalize(path.as_ref())
+            .with_context(|| format!("failed to canonicalize {}", path.as_ref().display()))?;
+        let dirs = self.project_directories()?;
+        let mut best_match: Option<(String, usize)> = None;
+        for (project_id, dir) in dirs {
+            let project_path = Path::new(&dir);
+            let canonical = match std::fs::canonicalize(project_path) {
+                Ok(p) => p,
+                Err(_) => continue,
+            };
+            if target == canonical || target.starts_with(&canonical) {
+                let depth = canonical.components().count();
+                if best_match.as_ref().map(|(_, d)| depth > *d).unwrap_or(true) {
+                    best_match = Some((project_id, depth));
+                }
+            }
+        }
+        Ok(best_match.map(|(id, _)| id))
+    }
+
     /// List sessions ordered by most recently updated.
     pub fn list_sessions(&self) -> Result<Vec<Session>> {
         let projects = self.projects()?;

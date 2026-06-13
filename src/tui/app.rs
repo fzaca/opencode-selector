@@ -48,6 +48,8 @@ pub struct App {
     pub pending_delete_id: Option<String>,
     pub status_message: Option<String>,
     pub pending_key: Option<char>,
+    pub project_filter: Option<String>,
+    pub current_project: Option<String>,
 }
 
 impl App {
@@ -55,7 +57,9 @@ impl App {
         sessions: Vec<Session>,
         folders: Vec<Folder>,
         mappings: HashMap<String, String>,
+        project_filter: Option<String>,
     ) -> Self {
+        let current_project = project_filter.clone();
         let mut app = Self {
             sessions,
             folders,
@@ -73,6 +77,8 @@ impl App {
             pending_delete_id: None,
             status_message: None,
             pending_key: None,
+            project_filter,
+            current_project,
         };
         app.apply_filter_and_sort();
         app
@@ -96,6 +102,12 @@ impl App {
             .iter()
             .enumerate()
             .filter(|(_, s)| {
+                // Filter by current project if one is set.
+                if let Some(pid) = self.project_filter.as_ref() {
+                    if &s.project_id != pid {
+                        return false;
+                    }
+                }
                 // The All folder shows every session. Every other folder shows
                 // only sessions explicitly assigned to it.
                 if let Some(fid) = folder_id {
@@ -189,5 +201,23 @@ impl App {
 
     pub fn clear_status(&mut self) {
         self.status_message = None;
+    }
+
+    pub fn toggle_project_filter(&mut self) {
+        if self.project_filter.is_some() {
+            self.project_filter = None;
+            self.set_status("Showing all projects");
+        } else {
+            self.project_filter = self.current_project.clone();
+            if let Some(ref pid) = self.project_filter {
+                self.set_status(format!("Filtered to project {pid}"));
+            }
+        }
+        self.apply_filter_and_sort();
+    }
+
+    pub fn set_project_filter(&mut self, project_id: Option<String>) {
+        self.project_filter = project_id;
+        self.apply_filter_and_sort();
     }
 }

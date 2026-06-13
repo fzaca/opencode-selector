@@ -59,6 +59,7 @@ opcs --help
 | `m` | Move session to folder |
 | `d` | Archive session |
 | `D` | Delete session (with confirmation) |
+| `P` | Toggle current project / all projects |
 | `a` | Jump to All folder |
 | `?` | Show help |
 | `q` / `Esc` | Quit / go back |

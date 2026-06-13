@@ -65,7 +65,12 @@ fn run_tui(config: Config) -> Result<()> {
     let folders = store.folders().to_vec();
     let mappings = store.session_folder_map();
 
-    let mut app = App::new(sessions, folders, mappings);
+    let cwd = std::env::current_dir().context("failed to get current directory")?;
+    let project_filter = repo
+        .find_project_for_path(&cwd)
+        .context("failed to resolve project for current directory")?;
+
+    let mut app = App::new(sessions, folders, mappings, project_filter);
 
     terminal::enable_raw_mode()?;
     let mut stdout = io::stdout();

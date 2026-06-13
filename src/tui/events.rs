@@ -106,6 +106,7 @@ fn handle_main_key(
         KeyCode::Char('D') => start_delete(app),
         KeyCode::Char('s') => app.cycle_sort(),
         KeyCode::Char('a') => jump_to_folder(app, "all"),
+        KeyCode::Char('P') => app.toggle_project_filter(),
         KeyCode::Char('N') => start_new_folder(app),
         KeyCode::Char('g') => app.pending_key = Some('g'),
         KeyCode::Char('G') => {
