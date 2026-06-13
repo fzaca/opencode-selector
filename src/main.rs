@@ -1,3 +1,112 @@
-fn main() {
-    println!("opencode-selector (opcs) is under construction.");
+use std::io;
+
+use anyhow::{Context, Result};
+use crossterm::{
+    event::{DisableMouseCapture, EnableMouseCapture},
+    terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
+};
+use ratatui::backend::CrosstermBackend;
+use ratatui::Terminal;
+
+use opencode_selector::cli::{Cli, Command};
+use opencode_selector::config::Config;
+use opencode_selector::db::SessionRepository;
+use opencode_selector::folders::FolderStore;
+use opencode_selector::opencode;
+use opencode_selector::tui::theme::Theme;
+use opencode_selector::tui::ui::draw;
+use opencode_selector::tui::{next_event, App, AppEvent};
+
+fn main() -> Result<()> {
+    color_eyre::install().expect("failed to install error handler");
+    let cli = Cli::parse_args();
+    let mut config = Config::new().context("failed to load configuration")?;
+
+    if let Some(ref db) = cli.db {
+        config = config.with_opencode_db_path(db);
+    }
+    if let Some(ref folders) = cli.folders {
+        config = config.with_folders_path(folders);
+    }
+
+    config.ensure_dirs()?;
+
+    match cli.command {
+        Some(Command::Session { id }) => {
+            opencode::launch_session(&id)?;
+            return Ok(());
+        }
+        Some(Command::List { archived: _ }) => {
+            list_sessions(&config)?;
+            return Ok(());
+        }
+        None => {}
+    }
+
+    run_tui(config)?;
+    Ok(())
+}
+
+fn list_sessions(config: &Config) -> Result<()> {
+    let repo = SessionRepository::open(config.opencode_db_path())
+        .context("failed to open opencode database")?;
+    let sessions = repo.list_sessions().context("failed to list sessions")?;
+    println!("{}", serde_json::to_string_pretty(&sessions)?);
+    Ok(())
+}
+
+fn run_tui(config: Config) -> Result<()> {
+    let repo = SessionRepository::open(config.opencode_db_path())
+        .context("failed to open opencode database")?;
+    let sessions = repo.list_sessions().context("failed to list sessions")?;
+
+    let mut store = FolderStore::open(config.folders_path())
+        .context("failed to open folder store")?;
+    let folders = store.folders().to_vec();
+    let mappings = store.session_folder_map();
+
+    let mut app = App::new(sessions, folders, mappings);
+
+    terminal::enable_raw_mode()?;
+    let mut stdout = io::stdout();
+    crossterm::execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
+
+    let theme = Theme::terminal();
+    let result = run_app(&mut terminal, &mut app, &repo, &mut store, theme);
+
+    terminal::disable_raw_mode()?;
+    crossterm::execute!(
+        terminal.backend_mut(),
+        LeaveAlternateScreen,
+        DisableMouseCapture
+    )?;
+    terminal.show_cursor()?;
+
+    match result? {
+        AppEvent::LaunchSession { id } => opencode::launch_session(&id)?,
+        AppEvent::LaunchNew => opencode::launch_new()?,
+        AppEvent::Quit | AppEvent::Continue => {}
+    }
+
+    Ok(())
+}
+
+fn run_app(
+    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    app: &mut App,
+    repo: &SessionRepository,
+    store: &mut FolderStore,
+    theme: Theme,
+) -> io::Result<AppEvent> {
+    terminal.draw(|f| draw(f, app, theme))?;
+
+    loop {
+        let event = next_event(app, repo, store)?;
+        if event != AppEvent::Continue {
+            return Ok(event);
+        }
+        terminal.draw(|f| draw(f, app, theme))?;
+    }
 }

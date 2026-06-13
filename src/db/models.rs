@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 
 /// Metadata about an opencode session.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Session {
     pub id: String,
     pub title: String,
@@ -28,7 +28,7 @@ impl Session {
 }
 
 /// Metadata about an opencode project.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Project {
     pub id: String,
     pub name: String,

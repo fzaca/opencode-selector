@@ -166,7 +166,8 @@ impl SessionRepository {
                 Ok(extract_text_preview(&data))
             })
             .optional()
-            .context("failed to query first message")?;
+            .context("failed to query first message")?
+            .flatten();
         Ok(text)
     }
 }
