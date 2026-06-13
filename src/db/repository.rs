@@ -277,19 +277,23 @@ impl SessionRepository {
                 Ok(v) => v,
                 Err(_) => continue,
             };
-            let role = value
-                .get("role")
-                .and_then(|r| r.as_str())
-                .unwrap_or("unknown")
-                .to_string();
+            if value.get("type").and_then(|t| t.as_str()) != Some("text") {
+                continue;
+            }
             let text = value
                 .get("text")
                 .or_else(|| value.get("content"))
                 .and_then(|t| t.as_str())
                 .unwrap_or("");
-            if !text.is_empty() {
-                messages.push((role, text.to_string()));
+            if text.is_empty() {
+                continue;
             }
+            let role = if value.get("time").is_some() {
+                "assistant"
+            } else {
+                "user"
+            };
+            messages.push((role.to_string(), text.to_string()));
         }
         Ok(messages)
     }
