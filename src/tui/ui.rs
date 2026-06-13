@@ -1,6 +1,6 @@
 use ratatui::{
     Frame,
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::{Constraint, Direction, Layout, Margin, Rect},
 };
 
 use crate::tui::app::{App, InputMode, Screen};
@@ -12,12 +12,13 @@ pub fn draw(f: &mut Frame, app: &mut App, theme: Theme) {
 
     match app.screen {
         Screen::Help => {
-            let area = centered_rect(70, 80, size);
+            let area = centered_rect(80, 85, size).inner(Margin::new(1, 1));
             help::draw(f, area, theme);
         }
         Screen::Preview => {
             if let Some(session) = app.current_session().cloned() {
-                preview::draw(f, &session, size, theme);
+                let area = size.inner(Margin::new(1, 1));
+                preview::draw(f, &session, area, theme);
             } else {
                 app.screen = Screen::Main;
                 draw_main(f, app, theme);
@@ -25,7 +26,7 @@ pub fn draw(f: &mut Frame, app: &mut App, theme: Theme) {
         }
         Screen::ConfirmDelete | Screen::Rename | Screen::MoveToFolder | Screen::NewFolder => {
             draw_main(f, app, theme);
-            let area = centered_rect(60, 20, size);
+            let area = centered_rect(60, 22, size);
             draw_modal(f, app, area, theme);
         }
         Screen::Main => {
@@ -35,17 +36,16 @@ pub fn draw(f: &mut Frame, app: &mut App, theme: Theme) {
 }
 
 fn draw_main(f: &mut Frame, app: &mut App, theme: Theme) {
-    let size = f.area();
+    let size = f.area().inner(Margin::new(1, 1));
     let main_chunks = Layout::default()
         .direction(Direction::Vertical)
-        .margin(0)
-        .constraints([Constraint::Min(3), Constraint::Length(3)])
+        .constraints([Constraint::Min(6), Constraint::Length(3)])
         .split(size);
 
     if app.folders_enabled {
         let body_chunks = Layout::default()
             .direction(Direction::Horizontal)
-            .constraints([Constraint::Percentage(25), Constraint::Percentage(75)])
+            .constraints([Constraint::Percentage(22), Constraint::Percentage(78)])
             .split(main_chunks[0]);
 
         folder_tree::draw(f, app, body_chunks[0], theme);
@@ -93,6 +93,7 @@ fn draw_modal(f: &mut Frame, app: &App, area: Rect, theme: Theme) {
 
     let block = Block::default()
         .borders(Borders::ALL)
+        .border_type(theme.border_type())
         .border_style(theme.border())
         .title(title)
         .title_style(theme.highlight());

@@ -2,7 +2,7 @@ use ratatui::{
     Frame,
     layout::Rect,
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, BorderType, Borders, Paragraph},
 };
 
 use crate::tui::app::App;
@@ -16,6 +16,7 @@ pub fn draw(f: &mut Frame, app: &App, area: Rect, theme: Theme) {
     };
     let block = Block::default()
         .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
         .border_style(theme.border())
         .title(format!(" {} ", prompt))
         .title_style(theme.highlight());

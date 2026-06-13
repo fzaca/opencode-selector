@@ -1,4 +1,5 @@
 use ratatui::style::{Color, Modifier, Style};
+use ratatui::widgets::BorderType;
 
 /// Theme that adapts to the terminal's default 16-color palette.
 #[derive(Debug, Clone, Copy)]
@@ -9,9 +10,11 @@ pub struct Theme {
     pub accent_dim: Color,
     pub border: Color,
     pub highlight: Color,
+    pub highlight_dim: Color,
     pub error: Color,
     pub warning: Color,
     pub success: Color,
+    pub muted: Color,
 }
 
 impl Theme {
@@ -26,10 +29,16 @@ impl Theme {
             accent_dim: Color::DarkGray,
             border: Color::DarkGray,
             highlight: Color::Blue,
+            highlight_dim: Color::DarkGray,
             error: Color::Red,
             warning: Color::Yellow,
             success: Color::Green,
+            muted: Color::DarkGray,
         }
+    }
+
+    pub fn border_type(self) -> BorderType {
+        BorderType::Rounded
     }
 }
 
@@ -56,8 +65,16 @@ impl Theme {
             .add_modifier(Modifier::BOLD)
     }
 
+    pub fn selected_dim(self) -> Style {
+        Style::default().bg(self.highlight).fg(Color::White)
+    }
+
     pub fn dim(self) -> Style {
         Style::default().fg(self.accent_dim).bg(self.background)
+    }
+
+    pub fn muted(self) -> Style {
+        Style::default().fg(self.muted).bg(self.background)
     }
 
     pub fn error(self) -> Style {
@@ -74,5 +91,12 @@ impl Theme {
 
     pub fn border(self) -> Style {
         Style::default().fg(self.border).bg(self.background)
+    }
+
+    pub fn badge(self) -> Style {
+        Style::default()
+            .fg(Color::White)
+            .bg(self.highlight)
+            .add_modifier(Modifier::BOLD)
     }
 }

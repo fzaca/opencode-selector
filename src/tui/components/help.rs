@@ -1,8 +1,9 @@
 use ratatui::{
     Frame,
-    layout::Rect,
+    layout::{Constraint, Direction, Layout, Rect},
+    style::Modifier,
     text::{Line, Span},
-    widgets::{Block, Borders, Clear, Paragraph},
+    widgets::{Block, BorderType, Borders, Clear, Paragraph},
 };
 
 use crate::tui::theme::Theme;
@@ -10,44 +11,79 @@ use crate::tui::theme::Theme;
 pub fn draw(f: &mut Frame, area: Rect, theme: Theme) {
     let block = Block::default()
         .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
         .border_style(theme.border())
         .title(" Help ")
         .title_style(theme.highlight());
 
-    let lines = vec![
-        Line::from(vec![Span::styled("Navigation", theme.accent())]),
-        Line::from("↑ / ↓ or k / j   Move selection"),
-        Line::from("PgUp / PgDn      Scroll page"),
-        Line::from("gg / G           Go to first / last"),
-        Line::from(""),
-        Line::from(vec![Span::styled("Actions", theme.accent())]),
-        Line::from("Enter            Open selected session in opencode"),
-        Line::from("n                Create a new opencode session"),
-        Line::from("p                Open full-screen preview"),
-        Line::from("r                Rename session"),
-        Line::from("m                Move session to folder (folders enabled)"),
-        Line::from("d                Move session to Archive"),
-        Line::from("D                Permanently delete session"),
-        Line::from("P                Toggle current project / all projects"),
-        Line::from("F                Toggle folder system"),
-        Line::from("a                Jump to All folder (folders enabled)"),
-        Line::from("N                Create new folder (folders enabled)"),
-        Line::from(""),
-        Line::from(vec![Span::styled("Search & Sort", theme.accent())]),
-        Line::from("/                Start search"),
-        Line::from("s                Cycle sort (updated / created / title)"),
-        Line::from(""),
-        Line::from(vec![Span::styled("Folders", theme.accent())]),
-        Line::from("h / l or ← / →   Switch focus to folders"),
-        Line::from("N                Create new folder"),
-        Line::from(""),
-        Line::from(vec![Span::styled("General", theme.accent())]),
-        Line::from("?                Toggle this help"),
-        Line::from("Esc / q          Back or quit"),
-        Line::from("Mouse            Click to select and scroll"),
-    ];
-
-    let paragraph = Paragraph::new(lines).block(block);
+    let inner = block.inner(area);
     f.render_widget(Clear, area);
-    f.render_widget(paragraph, area);
+    f.render_widget(block, area);
+
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .split(inner);
+
+    let left = build_group(
+        "Navigation",
+        &[
+            ("↑ / ↓ or k / j", "Move selection"),
+            ("PgUp / PgDn", "Scroll page"),
+            ("gg / G", "First / last session"),
+            ("h / l or ← / →", "Focus folders"),
+        ],
+        theme,
+    );
+
+    let right_top = build_group(
+        "Actions",
+        &[
+            ("Enter", "Open session"),
+            ("n", "New session"),
+            ("p", "Preview"),
+            ("r", "Rename"),
+            ("m", "Move to folder"),
+            ("d", "Archive"),
+            ("D", "Delete"),
+        ],
+        theme,
+    );
+
+    let right_bottom = build_group(
+        "Filters & Sort",
+        &[
+            ("P", "Toggle project filter"),
+            ("F", "Toggle folders"),
+            ("a", "Jump to All folder"),
+            ("N", "New folder"),
+            ("/", "Search"),
+            ("s", "Cycle sort"),
+        ],
+        theme,
+    );
+
+    let right = [right_top, vec![Line::from("")], right_bottom].concat();
+
+    f.render_widget(Paragraph::new(left), chunks[0]);
+    f.render_widget(Paragraph::new(right), chunks[1]);
+}
+
+fn build_group<'a>(title: &'a str, bindings: &[(&'a str, &'a str)], theme: Theme) -> Vec<Line<'a>> {
+    let mut lines = vec![Line::from(vec![Span::styled(
+        format!(" {} ", title),
+        theme.highlight(),
+    )])];
+
+    for (key, desc) in bindings {
+        lines.push(Line::from(vec![
+            Span::styled(
+                format!("{:<16}", key),
+                theme.accent().add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(*desc, theme.default_style()),
+        ]));
+    }
+
+    lines
 }

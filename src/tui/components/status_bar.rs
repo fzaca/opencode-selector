@@ -1,50 +1,85 @@
 use ratatui::{
     Frame,
-    layout::Rect,
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::Modifier,
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, BorderType, Borders, Paragraph},
 };
 
-use crate::tui::app::{App, InputMode, Screen};
+use crate::tui::app::{App, InputMode, Screen, SortBy};
 use crate::tui::theme::Theme;
 
 pub fn draw(f: &mut Frame, app: &App, area: Rect, theme: Theme) {
     let block = Block::default()
         .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
         .border_style(theme.border());
 
-    let mut spans = Vec::new();
+    let inner = block.inner(area);
+    f.render_widget(block, area);
 
     if let Some(ref msg) = app.status_message {
-        spans.push(Span::styled(msg.clone(), theme.warning()));
-    } else {
-        spans.push(Span::styled(mode_label(app), theme.highlight()));
-        spans.push(Span::raw(" | "));
-        spans.push(Span::styled(project_label(app), theme.accent()));
-        spans.push(Span::raw(" | "));
-        spans.extend(shortcuts(app, theme));
+        let line = Line::from(vec![Span::styled(
+            truncate(msg, inner.width as usize),
+            theme.warning(),
+        )]);
+        let paragraph = Paragraph::new(line);
+        f.render_widget(paragraph, inner);
+        return;
     }
 
-    let line = Line::from(spans);
-    let paragraph = Paragraph::new(line).block(block);
-    f.render_widget(paragraph, area);
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Length(mode_width(app)),
+            Constraint::Min(12),
+            Constraint::Length(shortcut_width(app)),
+        ])
+        .split(inner);
+
+    let mode = Line::from(vec![Span::styled(
+        format!(" {} ", mode_label(app)),
+        theme.badge(),
+    )]);
+    f.render_widget(Paragraph::new(mode), chunks[0]);
+
+    let context = Line::from(vec![
+        Span::styled("filter: ", theme.dim()),
+        Span::styled(context_label(app), theme.accent()),
+        Span::styled("  sort: ", theme.dim()),
+        Span::styled(sort_label(app.sort_by), theme.accent()),
+    ]);
+    f.render_widget(Paragraph::new(context), chunks[1]);
+
+    let shortcuts = Line::from(shortcuts(app, theme));
+    f.render_widget(
+        Paragraph::new(shortcuts).alignment(Alignment::Right),
+        chunks[2],
+    );
 }
 
-fn project_label(app: &App) -> String {
+fn context_label(app: &App) -> String {
     let project = if app.project_filter.is_some() {
         "project"
     } else {
-        "all projects"
+        "all"
     };
     let folders = if app.global_mode {
-        "no folders"
+        "global"
     } else if app.folders_enabled {
         "folders"
     } else {
         "flat"
     };
     format!("{} | {}", project, folders)
+}
+
+fn sort_label(sort: SortBy) -> &'static str {
+    match sort {
+        SortBy::Updated => "updated",
+        SortBy::Created => "created",
+        SortBy::Title => "title",
+    }
 }
 
 fn mode_label(app: &App) -> String {
@@ -58,41 +93,48 @@ fn mode_label(app: &App) -> String {
         },
         Screen::Preview => "PREVIEW".to_string(),
         Screen::Help => "HELP".to_string(),
-        Screen::ConfirmDelete => "CONFIRM DELETE".to_string(),
+        Screen::ConfirmDelete => "DELETE".to_string(),
         Screen::Rename => "RENAME".to_string(),
         Screen::MoveToFolder => "MOVE".to_string(),
         Screen::NewFolder => "NEW FOLDER".to_string(),
     }
 }
 
+fn mode_width(app: &App) -> u16 {
+    (mode_label(app).chars().count() + 2).max(8) as u16
+}
+
 fn shortcuts<'a>(app: &App, theme: Theme) -> Vec<Span<'a>> {
+    let key = |k: &'a str| Span::styled(k, theme.accent().add_modifier(Modifier::BOLD));
+
     match app.input_mode {
         InputMode::Search => vec![
-            Span::raw("Enter: search  "),
-            Span::styled("Esc", theme.accent().add_modifier(Modifier::BOLD)),
-            Span::raw(": clear"),
+            key("Enter"),
+            Span::raw(" search "),
+            key("Esc"),
+            Span::raw(" clear"),
         ],
         _ => match app.screen {
-            Screen::Main => vec![
-                Span::raw("↑↓/jk: navigate  "),
-                Span::raw("Enter: open  "),
-                Span::raw("/: search  "),
-                Span::raw("p: preview  "),
-                Span::raw("n: new  "),
-                Span::raw("r: rename  "),
-                Span::raw("m: move  "),
-                Span::raw("d: archive  "),
-                Span::raw("D: delete  "),
-                Span::raw("P: projects  "),
-                Span::raw("F: folders  "),
-                Span::raw("?: help  "),
-                Span::styled("q", theme.accent().add_modifier(Modifier::BOLD)),
-                Span::raw(": quit"),
-            ],
-            _ => vec![
-                Span::styled("Esc/q", theme.accent().add_modifier(Modifier::BOLD)),
-                Span::raw(": back"),
-            ],
+            Screen::Main => vec![key("?"), Span::raw(" help "), key("q"), Span::raw(" quit")],
+            _ => vec![key("Esc"), Span::raw(" back")],
         },
+    }
+}
+
+fn shortcut_width(app: &App) -> u16 {
+    let spans = shortcuts(app, Theme::terminal());
+    spans.iter().map(|s| s.width() as u16).sum::<u16>().max(14)
+}
+
+fn truncate(text: &str, max_len: usize) -> String {
+    if text.chars().count() <= max_len {
+        text.to_string()
+    } else {
+        format!(
+            "{}…",
+            text.chars()
+                .take(max_len.saturating_sub(1))
+                .collect::<String>()
+        )
     }
 }

@@ -2,7 +2,7 @@ use ratatui::{
     Frame,
     layout::Rect,
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph, Wrap},
+    widgets::{Block, BorderType, Borders, Paragraph, Wrap},
 };
 
 use crate::db::Session;
@@ -11,6 +11,7 @@ use crate::tui::theme::Theme;
 pub fn draw(f: &mut Frame, session: &Session, area: Rect, theme: Theme) {
     let block = Block::default()
         .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
         .border_style(theme.border())
         .title(format!(" Preview: {} ", session.display_title()))
         .title_style(theme.highlight());
