@@ -215,9 +215,6 @@ impl Theme {
             .add_modifier(Modifier::BOLD)
     }
 
-    pub fn dimmed_overlay(self) -> Style {
-        Style::default().bg(Color::Black).fg(self.muted)
-    }
 }
 
 #[cfg(test)]

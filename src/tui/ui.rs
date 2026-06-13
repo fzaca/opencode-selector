@@ -1,7 +1,7 @@
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Margin, Rect},
-    widgets::Block,
+    widgets::{Block, Clear},
 };
 
 use crate::tui::app::{App, InputMode, Screen};
@@ -23,9 +23,8 @@ pub fn draw(f: &mut Frame, app: &mut App, theme: Theme) {
         }
         Screen::Preview => {
             if app.current_session().is_some() {
-                let overlay = Block::default()
-                    .style(theme.dimmed_overlay());
-                f.render_widget(overlay, size);
+                f.render_widget(Clear, size);
+                f.render_widget(Block::default().style(theme.default_style()), size);
                 let area = centered_rect(90, 90, size);
                 preview::draw(f, app, area, theme);
             } else {

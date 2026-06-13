@@ -1,6 +1,7 @@
 use ratatui::{
     Frame,
     layout::Rect,
+    style::Stylize,
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, Paragraph, Wrap},
 };
@@ -58,16 +59,31 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect, theme: Theme) {
                     .to_string(),
             ),
         ]),
-        Line::raw(""),
-        Line::styled("First message:", theme.accent()),
     ];
 
-    if let Some(ref preview) = session.first_message_preview {
-        for line in preview.lines() {
-            lines.push(Line::raw(line.to_string()));
+    if session.messages.is_empty() {
+        if let Some(ref preview) = session.first_message_preview {
+            lines.push(Line::raw(""));
+            lines.push(Line::styled("Messages:", theme.accent()));
+            for line in preview.lines() {
+                lines.push(Line::raw(line.to_string()));
+            }
+        } else {
+            lines.push(Line::raw(""));
+            lines.push(Line::styled("No messages available.", theme.dim()));
         }
     } else {
-        lines.push(Line::styled("No preview available.", theme.dim()));
+        lines.push(Line::raw(""));
+        for (role, text) in &session.messages {
+            lines.push(Line::styled(
+                format!("── {} ──", role),
+                theme.accent().dim(),
+            ));
+            for line in text.lines() {
+                lines.push(Line::raw(line.to_string()));
+            }
+            lines.push(Line::raw(""));
+        }
     }
 
     let total = lines.len();
@@ -79,9 +95,10 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect, theme: Theme) {
 
     let visible: Vec<Line> = lines.into_iter().skip(scroll).take(available).collect();
 
+    let content_style = theme.default_style();
     f.render_widget(block.clone(), area);
 
-    let content_area = if total > available {
+    let content_rect = if total > available {
         Rect {
             x: inner.x,
             y: inner.y,
@@ -91,25 +108,31 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect, theme: Theme) {
     } else {
         inner
     };
-    f.render_widget(Paragraph::new(visible).wrap(Wrap { trim: false }), content_area);
+    f.render_widget(
+        Paragraph::new(visible.clone())
+            .style(content_style)
+            .wrap(Wrap { trim: false }),
+        content_rect,
+    );
 
     if total > available {
         let pct = scroll as f64 / max_scroll.max(1) as f64;
-        let pos = (pct * (content_area.height.saturating_sub(1) as f64)).round() as u16;
+        let pos = (pct * (inner.height.saturating_sub(2) as f64)).round() as u16;
         let mut sb = String::with_capacity(inner.width as usize);
         for i in 0..inner.width.saturating_sub(2) {
             sb.push(if i == pos { '█' } else { '░' });
         }
-        let status = Paragraph::new(Line::from(vec![
-            Span::styled(format!(" {}:{} ", scroll + 1, total), theme.dim()),
-            Span::raw(sb),
-        ]));
-        let status_area = Rect {
-            x: inner.x,
-            y: inner.y + content_area.height,
-            width: inner.width,
-            height: 1,
-        };
-        f.render_widget(status, status_area);
+        f.render_widget(
+            Paragraph::new(Line::from(vec![
+                Span::styled(format!(" {}:{} ", scroll + 1, total), theme.dim()),
+                Span::raw(sb),
+            ])),
+            Rect {
+                x: inner.x,
+                y: inner.y + inner.height - 1,
+                width: inner.width,
+                height: 1,
+            },
+        );
     }
 }

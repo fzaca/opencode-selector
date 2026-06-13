@@ -124,6 +124,8 @@ impl SessionRepository {
                 let project_directory = project_dirs.get(&project_id).cloned();
                 let first_message_preview =
                     Self::first_message_preview(&self.conn, &id).ok().flatten();
+                let messages =
+                    Self::session_messages(&self.conn, &id).unwrap_or_default();
 
                 Ok(Session {
                     id,
@@ -138,6 +140,7 @@ impl SessionRepository {
                     updated_at: parse_time(row.get(7)?),
                     summary_files: row.get(8)?,
                     first_message_preview,
+                    messages,
                 })
             })
             .context("failed to query sessions")?;
@@ -175,6 +178,8 @@ impl SessionRepository {
                 let project_directory = project_dirs.get(&project_id).cloned();
                 let first_message_preview =
                     Self::first_message_preview(&self.conn, &id).ok().flatten();
+                let messages =
+                    Self::session_messages(&self.conn, &id).unwrap_or_default();
 
                 Ok(Session {
                     id,
@@ -189,6 +194,7 @@ impl SessionRepository {
                     updated_at: parse_time(row.get(7)?),
                     summary_files: row.get(8)?,
                     first_message_preview,
+                    messages,
                 })
             })
             .optional()
@@ -246,6 +252,46 @@ impl SessionRepository {
             }
         }
         Ok(None)
+    }
+
+    pub fn session_messages(conn: &Connection, session_id: &str) -> Result<Vec<(String, String)>> {
+        let mut stmt = conn
+            .prepare(
+                "SELECT data FROM part
+                 WHERE session_id = ?1
+                 ORDER BY time_created ASC",
+            )
+            .context("failed to prepare part query")?;
+
+        let rows = stmt
+            .query_map([session_id], |row| {
+                let data: String = row.get(0)?;
+                Ok(data)
+            })
+            .context("failed to query parts")?;
+
+        let mut messages = Vec::new();
+        for row in rows {
+            let data = row.context("failed to read part row")?;
+            let value: serde_json::Value = match serde_json::from_str(&data) {
+                Ok(v) => v,
+                Err(_) => continue,
+            };
+            let role = value
+                .get("role")
+                .and_then(|r| r.as_str())
+                .unwrap_or("unknown")
+                .to_string();
+            let text = value
+                .get("text")
+                .or_else(|| value.get("content"))
+                .and_then(|t| t.as_str())
+                .unwrap_or("");
+            if !text.is_empty() {
+                messages.push((role, text.to_string()));
+            }
+        }
+        Ok(messages)
     }
 }
 

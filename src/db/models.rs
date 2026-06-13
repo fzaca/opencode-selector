@@ -15,6 +15,7 @@ pub struct Session {
     pub updated_at: DateTime<Utc>,
     pub summary_files: i64,
     pub first_message_preview: Option<String>,
+    pub messages: Vec<(String, String)>,
 }
 
 impl Session {
