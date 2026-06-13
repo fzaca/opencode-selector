@@ -47,7 +47,6 @@ pub fn draw(f: &mut Frame, app: &App, area: Rect, theme: Theme) {
         f.render_widget(Paragraph::new(mode), chunks[0]);
 
         let context = Line::from(vec![
-            Span::styled("filter: ", theme.dim()),
             Span::styled(context_label(app), theme.accent()),
             Span::styled("  sort: ", theme.dim()),
             Span::styled(sort_label(app.sort_by), theme.accent()),
@@ -66,7 +65,6 @@ pub fn draw(f: &mut Frame, app: &App, area: Rect, theme: Theme) {
             .split(inner);
 
         let context = Line::from(vec![
-            Span::styled("filter: ", theme.dim()),
             Span::styled(context_label(app), theme.accent()),
             Span::styled("  sort: ", theme.dim()),
             Span::styled(sort_label(app.sort_by), theme.accent()),
@@ -86,19 +84,11 @@ fn should_show_mode_badge(app: &App) -> bool {
 }
 
 fn context_label(app: &App) -> String {
-    let project = if app.project_filter.is_some() {
-        "project"
+    if app.global_mode {
+        "global".to_string()
     } else {
-        "all"
-    };
-    let folders = if app.global_mode {
-        "global"
-    } else if app.folders_enabled {
-        "folders"
-    } else {
-        "flat"
-    };
-    format!("{} | {}", project, folders)
+        "cwd".to_string()
+    }
 }
 
 fn sort_label(sort: SortBy) -> &'static str {
