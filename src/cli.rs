@@ -15,6 +15,14 @@ pub struct Cli {
     #[arg(long, global = true, env = "OPENCODE_FOLDERS_PATH")]
     pub folders: Option<PathBuf>,
 
+    /// Enable the folder system in the TUI.
+    #[arg(long, global = true)]
+    pub folders_enabled: bool,
+
+    /// Show sessions from all projects and disable project filtering.
+    #[arg(long, global = true)]
+    pub global: bool,
+
     #[command(subcommand)]
     pub command: Option<Command>,
 }
@@ -32,6 +40,8 @@ pub enum Command {
         #[arg(long)]
         archived: bool,
     },
+    /// Open the selector in global mode (all projects, no folders).
+    Global,
 }
 
 impl Cli {
