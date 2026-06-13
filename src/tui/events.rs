@@ -33,11 +33,19 @@ pub fn next_event(
                 }
                 Event::Mouse(mouse) => match mouse.kind {
                     MouseEventKind::ScrollDown => {
-                        app.move_selection_down();
+                        if app.screen == Screen::Preview {
+                            app.preview_scroll = app.preview_scroll.saturating_add(3);
+                        } else {
+                            app.move_selection_down();
+                        }
                         return Ok(AppEvent::Continue);
                     }
                     MouseEventKind::ScrollUp => {
-                        app.move_selection_up();
+                        if app.screen == Screen::Preview {
+                            app.preview_scroll = app.preview_scroll.saturating_sub(3);
+                        } else {
+                            app.move_selection_up();
+                        }
                         return Ok(AppEvent::Continue);
                     }
                     _ => {}
