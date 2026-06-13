@@ -3,6 +3,14 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result};
 use directories::ProjectDirs;
 
+/// User-facing configuration loaded from `~/.config/opencode-selector/config.toml`.
+#[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ConfigFile {
+    /// Whether the folder system is enabled in the TUI.
+    #[serde(default)]
+    pub folders_enabled: bool,
+}
+
 /// Application configuration and path resolution.
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -16,6 +24,10 @@ pub struct Config {
     opencode_config_dir: PathBuf,
     /// Path to the folder sidecar file.
     folders_path: PathBuf,
+    /// Path to the user config file.
+    config_file_path: PathBuf,
+    /// Parsed user config.
+    config_file: ConfigFile,
 }
 
 impl Config {
@@ -35,6 +47,9 @@ impl Config {
         let opencode_config_dir = home_dir.join(".config/opencode");
         let opencode_db_path = opencode_data_dir.join("opencode.db");
         let folders_path = selector_config_dir.join("folders.toml");
+        let config_file_path = selector_config_dir.join("config.toml");
+
+        let config_file = Self::load_config_file(&config_file_path);
 
         Ok(Self {
             selector_config_dir,
@@ -42,6 +57,8 @@ impl Config {
             opencode_db_path,
             opencode_config_dir,
             folders_path,
+            config_file_path,
+            config_file,
         })
     }
 
@@ -54,6 +71,13 @@ impl Config {
     /// Override the folders sidecar path (useful for tests).
     pub fn with_folders_path(mut self, path: impl AsRef<Path>) -> Self {
         self.folders_path = path.as_ref().to_path_buf();
+        self
+    }
+
+    /// Override the config file path (useful for tests).
+    pub fn with_config_file_path(mut self, path: impl AsRef<Path>) -> Self {
+        self.config_file_path = path.as_ref().to_path_buf();
+        self.config_file = Self::load_config_file(&self.config_file_path);
         self
     }
 
@@ -75,6 +99,42 @@ impl Config {
 
     pub fn folders_path(&self) -> &Path {
         &self.folders_path
+    }
+
+    pub fn config_file_path(&self) -> &Path {
+        &self.config_file_path
+    }
+
+    pub fn folders_enabled(&self) -> bool {
+        self.config_file.folders_enabled
+    }
+
+    /// Enable or disable folders in memory.
+    pub fn set_folders_enabled(&mut self, enabled: bool) {
+        self.config_file.folders_enabled = enabled;
+    }
+
+    /// Persist the current config file to disk.
+    pub fn save_config_file(&self) -> Result<()> {
+        if let Some(parent) = self.config_file_path.parent() {
+            std::fs::create_dir_all(parent)
+                .with_context(|| format!("failed to create directory {}", parent.display()))?;
+        }
+        let content =
+            toml::to_string_pretty(&self.config_file).context("failed to serialize config file")?;
+        std::fs::write(&self.config_file_path, content)
+            .with_context(|| format!("failed to write {}", self.config_file_path.display()))?;
+        Ok(())
+    }
+
+    fn load_config_file(path: &Path) -> ConfigFile {
+        if !path.exists() {
+            return ConfigFile::default();
+        }
+        match std::fs::read_to_string(path) {
+            Ok(content) => toml::from_str(&content).unwrap_or_default(),
+            Err(_) => ConfigFile::default(),
+        }
     }
 
     /// Ensure that the selector configuration and data directories exist.
@@ -120,5 +180,11 @@ mod tests {
                 .to_string_lossy()
                 .contains("opencode.db")
         );
+    }
+
+    #[test]
+    fn folders_disabled_by_default() {
+        let config = Config::new().unwrap();
+        assert!(!config.folders_enabled());
     }
 }
