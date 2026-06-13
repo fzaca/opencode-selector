@@ -47,6 +47,7 @@ pub struct App {
     pub confirm_message: String,
     pub pending_delete_id: Option<String>,
     pub status_message: Option<String>,
+    pub pending_key: Option<char>,
 }
 
 impl App {
@@ -67,6 +68,7 @@ impl App {
             confirm_message: String::new(),
             pending_delete_id: None,
             status_message: None,
+            pending_key: None,
         };
         app.apply_filter_and_sort();
         app

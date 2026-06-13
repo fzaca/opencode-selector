@@ -80,6 +80,13 @@ fn handle_main_key(
     store: &mut FolderStore,
     key: KeyEvent,
 ) -> io::Result<AppEvent> {
+    if app.pending_key == Some('g') && key.code == KeyCode::Char('g') {
+        app.selected_session = 0;
+        app.pending_key = None;
+        return Ok(AppEvent::Continue);
+    }
+    app.pending_key = None;
+
     match key.code {
         KeyCode::Char('q') | KeyCode::Esc => return Ok(AppEvent::Quit),
         KeyCode::Char('?') => app.screen = Screen::Help,
@@ -99,6 +106,10 @@ fn handle_main_key(
         KeyCode::Char('D') => start_delete(app),
         KeyCode::Char('s') => app.cycle_sort(),
         KeyCode::Char('N') => start_new_folder(app),
+        KeyCode::Char('g') => app.pending_key = Some('g'),
+        KeyCode::Char('G') => {
+            app.selected_session = app.filtered_indices.len().saturating_sub(1);
+        }
         KeyCode::Down | KeyCode::Char('j') => app.move_selection_down(),
         KeyCode::Up | KeyCode::Char('k') => app.move_selection_up(),
         KeyCode::Left | KeyCode::Char('h') => app.move_folder_up(),
