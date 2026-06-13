@@ -126,10 +126,14 @@ fn draw_command_bar(f: &mut Frame, app: &App, area: Rect, theme: Theme) {
     use ratatui::text::{Line, Span};
     use ratatui::widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph};
 
+    f.render_widget(Clear, area);
+    f.render_widget(Block::default().style(theme.default_style()), area);
+
+    let suggestion_rows = app.command_suggestions.len().min(6) as u16 + 2;
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(app.command_suggestions.len().min(6) as u16 + 2),
+            Constraint::Length(suggestion_rows),
             Constraint::Length(3),
         ])
         .split(area);
@@ -143,7 +147,6 @@ fn draw_command_bar(f: &mut Frame, app: &App, area: Rect, theme: Theme) {
             .title(" Suggestions ")
             .title_style(theme.highlight());
         let sinner = sblock.inner(suggestion_area);
-        f.render_widget(Clear, suggestion_area);
         f.render_widget(sblock, suggestion_area);
 
         let items: Vec<ListItem> = app
@@ -189,7 +192,6 @@ fn draw_command_bar(f: &mut Frame, app: &App, area: Rect, theme: Theme) {
         .border_style(theme.border())
         .title(" Command ");
     let inner = input_block.inner(input_area);
-    f.render_widget(Clear, input_area);
     f.render_widget(input_block, input_area);
 
     let prompt = Span::styled(":", theme.accent());
