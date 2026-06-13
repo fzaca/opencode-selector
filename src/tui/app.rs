@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::db::Session;
+use crate::db::{Session, SessionRepository};
 use crate::folders::Folder;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -307,6 +307,29 @@ impl App {
     pub fn move_folder_up(&mut self) {
         self.selected_folder = self.selected_folder.saturating_sub(1);
         self.apply_filter_and_sort();
+    }
+
+    pub fn load_messages_for_current_session(&mut self, repo: &SessionRepository) {
+        let session_id = self
+            .filtered_indices
+            .get(self.selected_session)
+            .and_then(|&idx| self.sessions.get(idx))
+            .map(|s| s.id.clone());
+        let Some(ref id) = session_id else {
+            return;
+        };
+        if self
+            .sessions
+            .iter()
+            .any(|s| &s.id == id && !s.messages.is_empty())
+        {
+            return;
+        }
+        if let Ok(msgs) = SessionRepository::session_messages(&repo.conn, id) {
+            if let Some(s) = self.sessions.iter_mut().find(|s| s.id == *id) {
+                s.messages = msgs;
+            }
+        }
     }
 
     pub fn set_search_query(&mut self, query: String) {

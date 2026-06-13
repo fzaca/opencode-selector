@@ -66,7 +66,7 @@ fn handle_key(
 
     match app.screen {
         Screen::Main => handle_main_key(app, repo, store, key),
-        Screen::Preview => handle_preview_key(app, key),
+        Screen::Preview => handle_preview_key(app, repo, key),
         Screen::Help => {
             if key.code == KeyCode::Esc || key.code == KeyCode::Char('q') {
                 app.screen = Screen::Main;
@@ -80,7 +80,7 @@ fn handle_key(
 
 fn handle_main_key(
     app: &mut App,
-    _repo: &SessionRepository,
+    repo: &SessionRepository,
     store: &mut FolderStore,
     key: KeyEvent,
 ) -> io::Result<AppEvent> {
@@ -101,6 +101,7 @@ fn handle_main_key(
         KeyCode::Char('n') => return Ok(AppEvent::LaunchNew),
         KeyCode::Char('p') => {
             if app.current_session().is_some() {
+                app.load_messages_for_current_session(repo);
                 app.screen = Screen::Preview;
             }
         }
@@ -322,7 +323,11 @@ fn handle_search_key(app: &mut App, key: KeyEvent) -> io::Result<AppEvent> {
     Ok(AppEvent::Continue)
 }
 
-fn handle_preview_key(app: &mut App, key: KeyEvent) -> io::Result<AppEvent> {
+fn handle_preview_key(
+    app: &mut App,
+    repo: &SessionRepository,
+    key: KeyEvent,
+) -> io::Result<AppEvent> {
     match key.code {
         KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('p') => {
             app.screen = Screen::Main;
@@ -332,25 +337,19 @@ fn handle_preview_key(app: &mut App, key: KeyEvent) -> io::Result<AppEvent> {
             app.preview_scroll = app.preview_scroll.saturating_sub(1);
         }
         KeyCode::Down | KeyCode::Char('j') => {
-            let session = app.current_session();
-            let total = session
-                .and_then(|s| s.first_message_preview.as_deref())
-                .map(|p| p.lines().count() + 9)
-                .unwrap_or(9);
-            let area = 20;
-            let max_scroll = total.saturating_sub(area);
-            if (app.preview_scroll as usize) < max_scroll {
-                app.preview_scroll += 1;
-            }
+            app.load_messages_for_current_session(repo);
+            app.preview_scroll = app.preview_scroll.saturating_add(1);
         }
         KeyCode::PageUp => {
-            app.preview_scroll = app.preview_scroll.saturating_sub(20);
+            app.preview_scroll = app.preview_scroll.saturating_sub(10);
         }
         KeyCode::PageDown => {
-            app.preview_scroll = app.preview_scroll.saturating_add(20);
+            app.load_messages_for_current_session(repo);
+            app.preview_scroll = app.preview_scroll.saturating_add(10);
         }
         KeyCode::Home => app.preview_scroll = 0,
         KeyCode::End => {
+            app.load_messages_for_current_session(repo);
             app.preview_scroll = u16::MAX;
         }
         _ => {}

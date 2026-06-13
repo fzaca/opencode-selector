@@ -9,7 +9,7 @@ use super::models::{Project, Session};
 
 /// Repository for reading and writing opencode session data.
 pub struct SessionRepository {
-    conn: Connection,
+    pub conn: Connection,
 }
 
 impl SessionRepository {
@@ -124,8 +124,6 @@ impl SessionRepository {
                 let project_directory = project_dirs.get(&project_id).cloned();
                 let first_message_preview =
                     Self::first_message_preview(&self.conn, &id).ok().flatten();
-                let messages =
-                    Self::session_messages(&self.conn, &id).unwrap_or_default();
 
                 Ok(Session {
                     id,
@@ -140,7 +138,7 @@ impl SessionRepository {
                     updated_at: parse_time(row.get(7)?),
                     summary_files: row.get(8)?,
                     first_message_preview,
-                    messages,
+                    messages: Vec::new(),
                 })
             })
             .context("failed to query sessions")?;
@@ -178,8 +176,6 @@ impl SessionRepository {
                 let project_directory = project_dirs.get(&project_id).cloned();
                 let first_message_preview =
                     Self::first_message_preview(&self.conn, &id).ok().flatten();
-                let messages =
-                    Self::session_messages(&self.conn, &id).unwrap_or_default();
 
                 Ok(Session {
                     id,
@@ -194,7 +190,7 @@ impl SessionRepository {
                     updated_at: parse_time(row.get(7)?),
                     summary_files: row.get(8)?,
                     first_message_preview,
-                    messages,
+                    messages: Vec::new(),
                 })
             })
             .optional()

@@ -1,6 +1,6 @@
 use ratatui::{
     Frame,
-    layout::Rect,
+    layout::{Alignment, Rect},
     style::Stylize,
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, Paragraph, Wrap},
@@ -26,59 +26,38 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect, theme: Theme) {
     let available = inner.height as usize;
 
     let mut lines = vec![
-        Line::from(vec![
-            Span::styled("ID: ", theme.accent()),
-            Span::raw(&session.id),
-        ]),
-        Line::from(vec![
-            Span::styled("Slug: ", theme.accent()),
-            Span::raw(&session.slug),
-        ]),
-        Line::from(vec![
-            Span::styled("Project: ", theme.accent()),
-            Span::raw(&session.project_name),
-        ]),
-        Line::from(vec![
-            Span::styled("Agent: ", theme.accent()),
-            Span::raw(session.agent.as_deref().unwrap_or("-")),
-        ]),
-        Line::from(vec![
-            Span::styled("Model: ", theme.accent()),
-            Span::raw(session.model_name.as_deref().unwrap_or("-")),
-        ]),
-        Line::from(vec![
-            Span::styled("Files changed: ", theme.accent()),
-            Span::raw(session.summary_files.to_string()),
-        ]),
-        Line::from(vec![
-            Span::styled("Updated: ", theme.accent()),
-            Span::raw(
-                session
-                    .updated_at
-                    .format("%Y-%m-%d %H:%M:%S UTC")
-                    .to_string(),
-            ),
-        ]),
+        meta_line("ID", &session.id, theme),
+        meta_line("Slug", &session.slug, theme),
+        meta_line("Project", &session.project_name, theme),
+        meta_line("Agent", session.agent.as_deref().unwrap_or("-"), theme),
+        meta_line("Model", session.model_name.as_deref().unwrap_or("-"), theme),
+        meta_line("Files changed", &session.summary_files.to_string(), theme),
+        meta_line(
+            "Updated",
+            &session.updated_at.format("%Y-%m-%d %H:%M:%S UTC").to_string(),
+            theme,
+        ),
     ];
+
+    lines.push(Line::raw(""));
 
     if session.messages.is_empty() {
         if let Some(ref preview) = session.first_message_preview {
-            lines.push(Line::raw(""));
             lines.push(Line::styled("Messages:", theme.accent()));
             for line in preview.lines() {
                 lines.push(Line::raw(line.to_string()));
             }
         } else {
-            lines.push(Line::raw(""));
-            lines.push(Line::styled("No messages available.", theme.dim()));
+            lines.push(Line::styled("(loading messages...)", theme.dim()));
         }
     } else {
-        lines.push(Line::raw(""));
         for (role, text) in &session.messages {
-            lines.push(Line::styled(
-                format!("── {} ──", role),
-                theme.accent().dim(),
-            ));
+            let role_style = if role == "assistant" {
+                theme.success().dim()
+            } else {
+                theme.accent().dim()
+            };
+            lines.push(Line::styled(format!("── {role} ──"), role_style));
             for line in text.lines() {
                 lines.push(Line::raw(line.to_string()));
             }
@@ -95,38 +74,23 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect, theme: Theme) {
 
     let visible: Vec<Line> = lines.into_iter().skip(scroll).take(available).collect();
 
-    let content_style = theme.default_style();
     f.render_widget(block.clone(), area);
-
-    let content_rect = if total > available {
-        Rect {
-            x: inner.x,
-            y: inner.y,
-            width: inner.width,
-            height: inner.height.saturating_sub(1),
-        }
-    } else {
-        inner
-    };
     f.render_widget(
         Paragraph::new(visible.clone())
-            .style(content_style)
+            .style(theme.default_style())
             .wrap(Wrap { trim: false }),
-        content_rect,
+        inner,
     );
 
     if total > available {
-        let pct = scroll as f64 / max_scroll.max(1) as f64;
-        let pos = (pct * (inner.height.saturating_sub(2) as f64)).round() as u16;
-        let mut sb = String::with_capacity(inner.width as usize);
-        for i in 0..inner.width.saturating_sub(2) {
-            sb.push(if i == pos { '█' } else { '░' });
-        }
         f.render_widget(
-            Paragraph::new(Line::from(vec![
-                Span::styled(format!(" {}:{} ", scroll + 1, total), theme.dim()),
-                Span::raw(sb),
-            ])),
+            Paragraph::new(format!(
+                " {}:{} ",
+                scroll + 1,
+                total
+            ))
+            .style(theme.dim())
+            .alignment(Alignment::Right),
             Rect {
                 x: inner.x,
                 y: inner.y + inner.height - 1,
@@ -135,4 +99,11 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect, theme: Theme) {
             },
         );
     }
+}
+
+fn meta_line<'a>(label: &str, value: &str, theme: Theme) -> Line<'a> {
+    Line::from(vec![
+        Span::styled(format!("{label}: "), theme.accent()),
+        Span::raw(value.to_string()),
+    ])
 }
