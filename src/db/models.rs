@@ -31,5 +31,5 @@ impl Session {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Project {
     pub id: String,
-    pub name: String,
+    pub name: Option<String>,
 }

@@ -68,9 +68,10 @@ impl SessionRepository {
                 let project_id: String = row.get(1)?;
                 let project_name = projects
                     .get(&project_id)
-                    .map(|p| p.name.clone())
+                    .and_then(|p| p.name.clone())
                     .unwrap_or_default();
-                let first_message_preview = Self::first_message_preview(&self.conn, &id).ok().flatten();
+                let first_message_preview =
+                    Self::first_message_preview(&self.conn, &id).ok().flatten();
 
                 Ok(Session {
                     id,
@@ -115,9 +116,10 @@ impl SessionRepository {
                 let project_id: String = row.get(1)?;
                 let project_name = projects
                     .get(&project_id)
-                    .map(|p| p.name.clone())
+                    .and_then(|p| p.name.clone())
                     .unwrap_or_default();
-                let first_message_preview = Self::first_message_preview(&self.conn, &id).ok().flatten();
+                let first_message_preview =
+                    Self::first_message_preview(&self.conn, &id).ok().flatten();
 
                 Ok(Session {
                     id,
@@ -141,10 +143,7 @@ impl SessionRepository {
     /// Rename a session title.
     pub fn rename_session(&self, id: &str, title: &str) -> Result<()> {
         self.conn
-            .execute(
-                "UPDATE session SET title = ?1 WHERE id = ?2",
-                [title, id],
-            )
+            .execute("UPDATE session SET title = ?1 WHERE id = ?2", [title, id])
             .context("failed to rename session")?;
         Ok(())
     }
