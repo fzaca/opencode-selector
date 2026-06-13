@@ -126,7 +126,18 @@ We use `git-cliff` with `cliff.toml`.
 5. Push `master` and tags.
 6. GitHub Actions builds release artifacts.
 
-## 13. Communication
+## 13. Project Skills
+
+Opencode-specific skills live in `skills/`:
+
+- `opencode-selector-dev` — standard development workflow.
+- `opencode-selector-release` — release workflow.
+- `opencode-selector-ui-review` — UI/UX review checklist.
+- `opencode-selector-compat` — opencode DB schema compatibility.
+
+Load the relevant skill before starting work in that area.
+
+## 14. Communication
 
 - English only for code, comments, and commits.
 - Keep PR descriptions actionable and reference issues.
