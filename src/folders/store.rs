@@ -182,6 +182,25 @@ impl FolderStore {
     }
 
     fn ensure_defaults(&mut self) {
+        // Remove the legacy Inbox folder and move its sessions to All.
+        if self.data.folders.iter().any(|f| f.id == "inbox") {
+            self.data.folders.retain(|f| f.id != "inbox");
+            let mut inbox_sessions = Vec::new();
+            self.data.mappings.retain(|m| {
+                if m.folder_id == "inbox" {
+                    inbox_sessions.push(m.session_id.clone());
+                    false
+                } else {
+                    true
+                }
+            });
+            for session_id in inbox_sessions {
+                self.data
+                    .mappings
+                    .push(FolderMapping::new(session_id, "all"));
+            }
+        }
+
         let default_ids: &[&str] = &["all", "archive"];
         for id in default_ids {
             if !self.data.folders.iter().any(|f| f.id == *id) {
@@ -193,6 +212,15 @@ impl FolderStore {
                 self.data.folders.push(Folder::new(*id, name));
             }
         }
+
+        // Reorder so system folders come first: All, Archive, then custom.
+        let order = ["all", "archive"];
+        self.data.folders.sort_by_key(|f| {
+            order
+                .iter()
+                .position(|&id| id == f.id)
+                .unwrap_or(order.len())
+        });
     }
 }
 

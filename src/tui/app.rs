@@ -110,7 +110,7 @@ impl App {
             .filter(|(_, s)| {
                 // Filter by current project if one is set.
                 if let Some(pid) = self.project_filter.as_ref() {
-                    if &s.project_id != pid {
+                    if s.project_id != *pid {
                         return false;
                     }
                 }
