@@ -102,9 +102,12 @@ fn run_tui(config: Config, global_mode: bool) -> Result<()> {
 
     let mut theme = Theme::terminal();
     let cwd = std::env::current_dir().ok();
-    if let Some(opencode_theme) =
-        opencode_theme::load_active_theme(config.opencode_config_dir(), cwd.as_deref())
-    {
+    let cache_dir = config.selector_data_dir().join("themes");
+    if let Some(opencode_theme) = opencode_theme::load_active_theme(
+        config.opencode_config_dir(),
+        cwd.as_deref(),
+        Some(&cache_dir),
+    ) {
         theme.apply_opencode(&opencode_theme);
     }
     if let Some(config_theme) = config.theme() {

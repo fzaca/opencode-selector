@@ -1,10 +1,14 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use ratatui::style::Color;
 use serde_json::Value;
 
 use crate::tui::theme::parse_hex_color;
+
+const BUILTIN_THEME_URL: &str =
+    "https://raw.githubusercontent.com/anomalyco/opencode/dev/packages/tui/src/theme/assets";
 
 /// A subset of an opencode theme resolved to `ratatui` colors.
 ///
@@ -29,20 +33,67 @@ pub struct OpencodeTheme {
 /// Load the active opencode theme by reading `tui.json` and resolving the
 /// referenced theme file.
 ///
-/// Returns `None` when:
-/// - the active theme is a built-in (no JSON file on disk), or
-/// - `tui.json` cannot be read, or
-/// - the theme file cannot be found/loaded.
-pub fn load_active_theme(opencode_config_dir: &Path, cwd: Option<&Path>) -> Option<OpencodeTheme> {
+/// The lookup order is:
+/// 1. Custom theme files on disk (`~/.config/opencode/themes`, project-root,
+///    cwd).
+/// 2. Built-in opencode themes downloaded from GitHub and cached under
+///    `cache_dir/themes`.
+///
+/// Returns `None` when the theme cannot be resolved or loaded.
+pub fn load_active_theme(
+    opencode_config_dir: &Path,
+    cwd: Option<&Path>,
+    cache_dir: Option<&Path>,
+) -> Option<OpencodeTheme> {
     let tui = resolve_tui_json(opencode_config_dir, cwd)?;
     let theme_name = tui
         .get("theme")
         .and_then(Value::as_str)
         .unwrap_or("opencode");
-    let path = find_theme_file(opencode_config_dir, cwd, theme_name)?;
+
+    // The "system" theme is generated at runtime and has no JSON definition.
+    if theme_name == "system" {
+        return None;
+    }
+
+    if let Some(path) = find_theme_file(opencode_config_dir, cwd, theme_name) {
+        return load_theme_from_path(&path);
+    }
+
+    if let Some(cache) = cache_dir {
+        if let Some(path) = fetch_builtin_theme(theme_name, cache) {
+            return load_theme_from_path(&path);
+        }
+    }
+
+    None
+}
+
+fn load_theme_from_path(path: &Path) -> Option<OpencodeTheme> {
     let content = std::fs::read_to_string(path).ok()?;
     let value: Value = serde_json::from_str(&content).ok()?;
     Some(resolve_opencode_theme(&value))
+}
+
+fn fetch_builtin_theme(name: &str, cache_dir: &Path) -> Option<PathBuf> {
+    let themes_dir = cache_dir.join("themes");
+    let cache_path = themes_dir.join(format!("{name}.json"));
+
+    if cache_path.is_file() {
+        return Some(cache_path);
+    }
+
+    let url = format!("{BUILTIN_THEME_URL}/{name}.json");
+    let client = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(5))
+        .build()
+        .ok()?;
+    let response = client.get(&url).send().ok()?.error_for_status().ok()?;
+    let content = response.text().ok()?;
+
+    std::fs::create_dir_all(&themes_dir).ok()?;
+    std::fs::write(&cache_path, content).ok()?;
+    Some(cache_path)
 }
 
 fn resolve_tui_json(opencode_config_dir: &Path, cwd: Option<&Path>) -> Option<Value> {
@@ -238,5 +289,39 @@ mod tests {
         assert_eq!(project_root(&nested), Some(repo.clone()));
         assert_eq!(project_root(&repo), Some(repo));
         assert_eq!(project_root(temp.path()), None);
+    }
+
+    #[test]
+    fn load_active_theme_reads_local_theme_file() {
+        let temp = tempfile::tempdir().unwrap();
+        let config_dir = temp.path().join("opencode");
+        let themes_dir = config_dir.join("themes");
+        std::fs::create_dir_all(&themes_dir).unwrap();
+
+        let tui_json = config_dir.join("tui.json");
+        std::fs::write(
+            &tui_json,
+            serde_json::json!({ "theme": "custom" }).to_string(),
+        )
+        .unwrap();
+
+        let theme_json = themes_dir.join("custom.json");
+        std::fs::write(
+            &theme_json,
+            serde_json::json!({
+                "theme": {
+                    "background": "#111111",
+                    "text": "#eeeeee",
+                    "primary": "#ff0000"
+                }
+            })
+            .to_string(),
+        )
+        .unwrap();
+
+        let theme = load_active_theme(&config_dir, None, None).unwrap();
+        assert_eq!(theme.background, Some(Color::Rgb(17, 17, 17)));
+        assert_eq!(theme.foreground, Some(Color::Rgb(238, 238, 238)));
+        assert_eq!(theme.highlight, Some(Color::Rgb(255, 0, 0)));
     }
 }
