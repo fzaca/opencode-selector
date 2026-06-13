@@ -216,9 +216,7 @@ impl Theme {
     }
 
     pub fn dimmed_overlay(self) -> Style {
-        Style::default()
-            .bg(Color::Indexed(0))
-            .fg(self.muted)
+        Style::default().bg(Color::Black).fg(self.muted)
     }
 }
 

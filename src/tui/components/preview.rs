@@ -1,8 +1,8 @@
 use ratatui::{
     Frame,
-    layout::{Alignment, Rect},
+    layout::Rect,
     text::{Line, Span},
-    widgets::{Block, BorderType, Borders, Clear, Paragraph, Wrap},
+    widgets::{Block, BorderType, Borders, Paragraph, Wrap},
 };
 
 use crate::tui::app::App;
@@ -22,7 +22,7 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect, theme: Theme) {
         .title_style(theme.highlight());
 
     let inner = block.inner(area);
-    let available = inner.height.saturating_sub(1) as usize;
+    let available = inner.height as usize;
 
     let mut lines = vec![
         Line::from(vec![
@@ -79,13 +79,23 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect, theme: Theme) {
 
     let visible: Vec<Line> = lines.into_iter().skip(scroll).take(available).collect();
 
-    f.render_widget(Clear, area);
     f.render_widget(block.clone(), area);
-    f.render_widget(Paragraph::new(visible).wrap(Wrap { trim: false }), inner);
+
+    let content_area = if total > available {
+        Rect {
+            x: inner.x,
+            y: inner.y,
+            width: inner.width,
+            height: inner.height.saturating_sub(1),
+        }
+    } else {
+        inner
+    };
+    f.render_widget(Paragraph::new(visible).wrap(Wrap { trim: false }), content_area);
 
     if total > available {
         let pct = scroll as f64 / max_scroll.max(1) as f64;
-        let pos = (pct * (available.saturating_sub(1) as f64)).round() as u16;
+        let pos = (pct * (content_area.height.saturating_sub(1) as f64)).round() as u16;
         let mut sb = String::with_capacity(inner.width as usize);
         for i in 0..inner.width.saturating_sub(2) {
             sb.push(if i == pos { '█' } else { '░' });
@@ -93,11 +103,10 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect, theme: Theme) {
         let status = Paragraph::new(Line::from(vec![
             Span::styled(format!(" {}:{} ", scroll + 1, total), theme.dim()),
             Span::raw(sb),
-        ]))
-        .alignment(Alignment::Right);
+        ]));
         let status_area = Rect {
             x: inner.x,
-            y: inner.y + inner.height - 1,
+            y: inner.y + content_area.height,
             width: inner.width,
             height: 1,
         };
