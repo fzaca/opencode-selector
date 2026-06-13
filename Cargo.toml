@@ -2,7 +2,7 @@
 name = "opencode-selector"
 version = "0.4.0"
 edition = "2024"
-authors = ["Zacarias <fzaca@example.com>"]
+authors = ["Zacarias <zaca03zaca@gmail.com>"]
 description = "A beautiful TUI for selecting, organizing, and launching opencode sessions."
 license = "MIT"
 repository = "https://github.com/fzaca/opencode-selector"
