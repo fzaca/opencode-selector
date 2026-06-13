@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2026-06-13
+
+### Features
+
+- Load custom colors from config.toml
+- Load active opencode theme from tui.json
+- Fetch built-in opencode themes from GitHub
+
+### Refactor
+
+- Hide mode badge in normal state
+- Simplify status bar context labels
+- Restore filter prefix in status bar
 ## [0.2.0] - 2026-06-13
 
 ### Features
