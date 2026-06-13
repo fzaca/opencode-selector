@@ -2,6 +2,7 @@ use ratatui::style::{Color, Modifier, Style};
 use ratatui::widgets::BorderType;
 
 use crate::config::ThemeConfig;
+use crate::opencode_theme::OpencodeTheme;
 
 /// Theme that adapts to the terminal's default 16-color palette.
 #[derive(Debug, Clone, Copy)]
@@ -43,45 +44,90 @@ impl Theme {
     /// defaults for any color that is missing or invalid.
     pub fn from_config(config: Option<&ThemeConfig>) -> Self {
         let mut theme = Self::terminal();
-        let Some(config) = config else {
-            return theme;
-        };
+        if let Some(config) = config {
+            theme.apply_config(config);
+        }
+        theme
+    }
 
+    /// Build a theme from opencode's active theme, falling back to the terminal
+    /// defaults for any color that is missing or invalid.
+    pub fn from_opencode(opencode: &OpencodeTheme) -> Self {
+        let mut theme = Self::terminal();
+        theme.apply_opencode(opencode);
+        theme
+    }
+
+    pub fn apply_config(&mut self, config: &ThemeConfig) {
         if let Some(c) = config.background.as_deref().and_then(parse_hex_color) {
-            theme.background = c;
+            self.background = c;
         }
         if let Some(c) = config.foreground.as_deref().and_then(parse_hex_color) {
-            theme.foreground = c;
+            self.foreground = c;
         }
         if let Some(c) = config.accent.as_deref().and_then(parse_hex_color) {
-            theme.accent = c;
+            self.accent = c;
         }
         if let Some(c) = config.accent_dim.as_deref().and_then(parse_hex_color) {
-            theme.accent_dim = c;
+            self.accent_dim = c;
         }
         if let Some(c) = config.border.as_deref().and_then(parse_hex_color) {
-            theme.border = c;
+            self.border = c;
         }
         if let Some(c) = config.highlight.as_deref().and_then(parse_hex_color) {
-            theme.highlight = c;
+            self.highlight = c;
         }
         if let Some(c) = config.highlight_dim.as_deref().and_then(parse_hex_color) {
-            theme.highlight_dim = c;
+            self.highlight_dim = c;
         }
         if let Some(c) = config.error.as_deref().and_then(parse_hex_color) {
-            theme.error = c;
+            self.error = c;
         }
         if let Some(c) = config.warning.as_deref().and_then(parse_hex_color) {
-            theme.warning = c;
+            self.warning = c;
         }
         if let Some(c) = config.success.as_deref().and_then(parse_hex_color) {
-            theme.success = c;
+            self.success = c;
         }
         if let Some(c) = config.muted.as_deref().and_then(parse_hex_color) {
-            theme.muted = c;
+            self.muted = c;
         }
+    }
 
-        theme
+    pub fn apply_opencode(&mut self, opencode: &OpencodeTheme) {
+        if let Some(c) = opencode.background {
+            self.background = c;
+        }
+        if let Some(c) = opencode.foreground {
+            self.foreground = c;
+        }
+        if let Some(c) = opencode.accent {
+            self.accent = c;
+        }
+        if let Some(c) = opencode.accent_dim {
+            self.accent_dim = c;
+        }
+        if let Some(c) = opencode.border {
+            self.border = c;
+        }
+        if let Some(c) = opencode.highlight {
+            self.highlight = c;
+        }
+        if let Some(c) = opencode.highlight_dim {
+            self.highlight_dim = c;
+        }
+        if let Some(c) = opencode.error {
+            self.error = c;
+        }
+        if let Some(c) = opencode.warning {
+            self.warning = c;
+        }
+        if let Some(c) = opencode.success {
+            self.success = c;
+        }
+        if let Some(c) = opencode.muted {
+            self.muted = c;
+        }
     }
 
     pub fn border_type(self) -> BorderType {
@@ -90,7 +136,7 @@ impl Theme {
 }
 
 /// Parse a hex color string as `#RRGGBB` or `#RGB` into a `ratatui::Color`.
-fn parse_hex_color(value: &str) -> Option<Color> {
+pub(crate) fn parse_hex_color(value: &str) -> Option<Color> {
     let value = value.trim();
     if !value.starts_with('#') {
         return None;

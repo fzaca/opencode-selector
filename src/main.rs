@@ -13,6 +13,7 @@ use opencode_selector::config::Config;
 use opencode_selector::db::SessionRepository;
 use opencode_selector::folders::FolderStore;
 use opencode_selector::opencode;
+use opencode_selector::opencode_theme;
 use opencode_selector::tui::theme::Theme;
 use opencode_selector::tui::ui::draw;
 use opencode_selector::tui::{App, AppEvent, next_event};
@@ -99,7 +100,17 @@ fn run_tui(config: Config, global_mode: bool) -> Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let theme = Theme::from_config(config.theme());
+    let mut theme = Theme::terminal();
+    let cwd = std::env::current_dir().ok();
+    if let Some(opencode_theme) =
+        opencode_theme::load_active_theme(config.opencode_config_dir(), cwd.as_deref())
+    {
+        theme.apply_opencode(&opencode_theme);
+    }
+    if let Some(config_theme) = config.theme() {
+        theme.apply_config(config_theme);
+    }
+
     let result = run_app(&mut terminal, &mut app, &repo, &mut store, theme);
 
     terminal::disable_raw_mode()?;
