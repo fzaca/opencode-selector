@@ -51,8 +51,9 @@ pub fn draw(f: &mut Frame, area: Rect, theme: Theme) {
     );
 
     let right_bottom = build_group(
-        "Filters & Sort",
+        "Commands & Filters",
         &[
+            (":", "Command mode (like k9s)"),
             ("P", "Toggle project filter"),
             ("F", "Toggle folders"),
             ("a", "Jump to All folder"),

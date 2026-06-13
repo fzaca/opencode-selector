@@ -10,6 +10,11 @@ use crate::tui::theme::Theme;
 pub fn draw(f: &mut Frame, app: &mut App, theme: Theme) {
     let size = f.area();
 
+    f.render_widget(
+        ratatui::widgets::Block::default().style(theme.default_style()),
+        size,
+    );
+
     match app.screen {
         Screen::Help => {
             let area = centered_rect(80, 85, size).inner(Margin::new(1, 1));
@@ -37,9 +42,21 @@ pub fn draw(f: &mut Frame, app: &mut App, theme: Theme) {
 
 fn draw_main(f: &mut Frame, app: &mut App, theme: Theme) {
     let size = f.area().inner(Margin::new(1, 1));
+
+    let suggest_count = if app.input_mode == InputMode::Command {
+        app.command_suggestions.len().min(6) as u16 + 2
+    } else {
+        0
+    };
+    let bottom_bar = if app.input_mode == InputMode::Command {
+        suggest_count + 3
+    } else {
+        3
+    };
+
     let main_chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Min(6), Constraint::Length(3)])
+        .constraints([Constraint::Min(6), Constraint::Length(bottom_bar)])
         .split(size);
 
     if app.folders_enabled {
@@ -54,7 +71,9 @@ fn draw_main(f: &mut Frame, app: &mut App, theme: Theme) {
         session_list::draw(f, app, main_chunks[0], theme);
     }
 
-    if matches!(app.input_mode, InputMode::Search) && app.screen == Screen::Main {
+    if app.input_mode == InputMode::Command && app.screen == Screen::Main {
+        draw_command_bar(f, app, main_chunks[1], theme);
+    } else if matches!(app.input_mode, InputMode::Search) && app.screen == Screen::Main {
         let search_area = Layout::default()
             .direction(Direction::Vertical)
             .constraints([Constraint::Length(3), Constraint::Min(0)])
@@ -101,6 +120,82 @@ fn draw_modal(f: &mut Frame, app: &App, area: Rect, theme: Theme) {
     let paragraph = Paragraph::new(content).block(block);
     f.render_widget(Clear, area);
     f.render_widget(paragraph, area);
+}
+
+fn draw_command_bar(f: &mut Frame, app: &App, area: Rect, theme: Theme) {
+    use ratatui::text::{Line, Span};
+    use ratatui::widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph};
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(app.command_suggestions.len().min(6) as u16 + 2),
+            Constraint::Length(3),
+        ])
+        .split(area);
+
+    if !app.command_suggestions.is_empty() {
+        let suggestion_area = chunks[0];
+        let sblock = Block::default()
+            .borders(Borders::ALL)
+            .border_type(theme.border_type())
+            .border_style(theme.border())
+            .title(" Suggestions ")
+            .title_style(theme.highlight());
+        let sinner = sblock.inner(suggestion_area);
+        f.render_widget(Clear, suggestion_area);
+        f.render_widget(sblock, suggestion_area);
+
+        let items: Vec<ListItem> = app
+            .command_suggestions
+            .iter()
+            .enumerate()
+            .take(6)
+            .map(|(i, s)| {
+                let style = if i == app.selected_suggestion {
+                    theme.highlight()
+                } else {
+                    theme.default_style()
+                };
+                let desc_style = if i == app.selected_suggestion {
+                    theme.badge()
+                } else {
+                    theme.dim()
+                };
+                let max_text = sinner.width.saturating_sub(2) as usize;
+                let desc_width = 30usize.min(max_text.saturating_sub(18));
+                let desc = if s.description.is_empty() || desc_width < 4 {
+                    String::new()
+                } else {
+                    let truncated: String = s.description.chars().take(desc_width).collect();
+                    truncated
+                };
+                ListItem::new(Line::from(vec![
+                    Span::styled(format!(" {:<16}", &s.text[..s.text.len().min(16)]), style),
+                    Span::styled(desc, desc_style),
+                ]))
+            })
+            .collect();
+
+        let mut list_state = ListState::default().with_selected(Some(app.selected_suggestion));
+        let list = List::new(items).highlight_style(theme.highlight());
+        f.render_stateful_widget(list, sinner, &mut list_state);
+    }
+
+    let input_area = chunks[if app.command_suggestions.is_empty() { 0 } else { 1 }];
+    let input_block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(theme.border_type())
+        .border_style(theme.border())
+        .title(" Command ");
+    let inner = input_block.inner(input_area);
+    f.render_widget(Clear, input_area);
+    f.render_widget(input_block, input_area);
+
+    let prompt = Span::styled(":", theme.accent());
+    let cursor = Span::styled("\u{2588}", theme.highlight());
+    let text = Line::from(vec![prompt, Span::raw(&app.command_buffer), cursor]);
+    f.render_widget(Paragraph::new(text), inner);
 }
 
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {

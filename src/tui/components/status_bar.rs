@@ -109,6 +109,7 @@ fn mode_label(app: &App) -> String {
             InputMode::Rename => "RENAME".to_string(),
             InputMode::NewFolder => "NEW FOLDER".to_string(),
             InputMode::Confirm => "CONFIRM".to_string(),
+            InputMode::Command => "COMMAND".to_string(),
         },
         Screen::Preview => "PREVIEW".to_string(),
         Screen::Help => "HELP".to_string(),

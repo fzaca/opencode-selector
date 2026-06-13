@@ -5,7 +5,7 @@ use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, MouseEventK
 
 use crate::db::SessionRepository;
 use crate::folders::FolderStore;
-use crate::tui::app::{App, InputMode, Screen};
+use crate::tui::app::{self, App, InputMode, Screen};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AppEvent {
@@ -60,6 +60,7 @@ fn handle_key(
         InputMode::Rename => return handle_rename_key(app, repo, key),
         InputMode::NewFolder => return handle_new_folder_key(app, store, key),
         InputMode::Confirm => return handle_confirm_key(app, repo, store, key),
+        InputMode::Command => return handle_command_key(app, repo, store, key),
         InputMode::Normal => {}
     }
 
@@ -136,6 +137,7 @@ fn handle_main_key(
                 app.set_status("Enable folders with F to create folders");
             }
         }
+        KeyCode::Char(':') => enter_command_mode(app),
         KeyCode::Char('g') => app.pending_key = Some('g'),
         KeyCode::Char('G') => {
             app.selected_session = app.filtered_indices.len().saturating_sub(1);
@@ -183,6 +185,118 @@ fn handle_main_key(
         _ => {}
     }
     Ok(AppEvent::Continue)
+}
+
+fn enter_command_mode(app: &mut App) {
+    app.command_buffer = String::new();
+    app.command_history_pos = None;
+    app.input_mode = InputMode::Command;
+    app.compute_suggestions();
+}
+
+fn handle_command_key(
+    app: &mut App,
+    _repo: &SessionRepository,
+    _store: &mut FolderStore,
+    key: KeyEvent,
+) -> io::Result<AppEvent> {
+    match key.code {
+        KeyCode::Enter => {
+            if !app.command_suggestions.is_empty() {
+                app.accept_suggestion();
+            }
+            let cmd = app.command_buffer.clone();
+            app.input_mode = InputMode::Normal;
+            if cmd.is_empty() {
+                return Ok(AppEvent::Continue);
+            }
+            match app.execute_command(&cmd) {
+                app::CommandResult::Quit => return Ok(AppEvent::Quit),
+                app::CommandResult::Executed => {}
+                app::CommandResult::Unknown(cmd_name) => {
+                    app.set_status(format!("Unknown command: :{cmd_name}"));
+                }
+                app::CommandResult::Error(msg) => {
+                    app.set_status(format!("Command error: {msg}"));
+                }
+            }
+            Ok(AppEvent::Continue)
+        }
+        KeyCode::Tab => {
+            if !app.command_suggestions.is_empty() {
+                app.selected_suggestion =
+                    (app.selected_suggestion + 1) % app.command_suggestions.len();
+            }
+            Ok(AppEvent::Continue)
+        }
+        KeyCode::BackTab => {
+            if !app.command_suggestions.is_empty() {
+                app.selected_suggestion = if app.selected_suggestion == 0 {
+                    app.command_suggestions.len() - 1
+                } else {
+                    app.selected_suggestion - 1
+                };
+            }
+            Ok(AppEvent::Continue)
+        }
+        KeyCode::Esc | KeyCode::Char('q') => {
+            app.input_mode = InputMode::Normal;
+            Ok(AppEvent::Continue)
+        }
+        KeyCode::Up => {
+            if !app.command_suggestions.is_empty() {
+                if app.selected_suggestion == 0 {
+                    app.selected_suggestion = app.command_suggestions.len() - 1;
+                } else {
+                    app.selected_suggestion -= 1;
+                }
+                return Ok(AppEvent::Continue);
+            }
+            let history_len = app.command_history.len();
+            if history_len == 0 {
+                return Ok(AppEvent::Continue);
+            }
+            let pos = app.command_history_pos.unwrap_or(history_len);
+            if pos > 0 {
+                let new_pos = pos - 1;
+                app.command_history_pos = Some(new_pos);
+                app.command_buffer = app.command_history[new_pos].clone();
+                app.compute_suggestions();
+            }
+            Ok(AppEvent::Continue)
+        }
+        KeyCode::Down => {
+            if !app.command_suggestions.is_empty() {
+                app.selected_suggestion =
+                    (app.selected_suggestion + 1) % app.command_suggestions.len();
+                return Ok(AppEvent::Continue);
+            }
+            if let Some(pos) = app.command_history_pos {
+                let next = pos + 1;
+                if next < app.command_history.len() {
+                    app.command_history_pos = Some(next);
+                    app.command_buffer = app.command_history[next].clone();
+                    app.compute_suggestions();
+                } else {
+                    app.command_history_pos = None;
+                    app.command_buffer.clear();
+                    app.compute_suggestions();
+                }
+            }
+            Ok(AppEvent::Continue)
+        }
+        KeyCode::Backspace => {
+            app.command_buffer.pop();
+            app.compute_suggestions();
+            Ok(AppEvent::Continue)
+        }
+        KeyCode::Char(c) => {
+            app.command_buffer.push(c);
+            app.compute_suggestions();
+            Ok(AppEvent::Continue)
+        }
+        _ => Ok(AppEvent::Continue),
+    }
 }
 
 fn handle_search_key(app: &mut App, key: KeyEvent) -> io::Result<AppEvent> {
