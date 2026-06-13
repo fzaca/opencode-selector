@@ -37,10 +37,10 @@ Download the latest release from the [releases page](https://github.com/fzaca/op
 opcs
 
 # Launch a specific session directly
-opcs --session ses_xxx
+opcs session ses_xxx
 
 # List sessions as JSON
-opcs --list
+opcs list
 
 # Show help
 opcs --help
