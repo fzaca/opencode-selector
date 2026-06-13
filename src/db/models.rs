@@ -8,6 +8,7 @@ pub struct Session {
     pub slug: String,
     pub project_id: String,
     pub project_name: String,
+    pub project_directory: Option<String>,
     pub agent: Option<String>,
     pub model_name: Option<String>,
     pub created_at: DateTime<Utc>,

@@ -67,6 +67,15 @@ impl SessionRepository {
         Ok(dirs)
     }
 
+    /// Load project directories keyed by project ID.
+    fn project_directory_map(&self) -> Result<HashMap<String, String>> {
+        let mut map = HashMap::new();
+        for (project_id, directory) in self.project_directories()? {
+            map.insert(project_id, directory);
+        }
+        Ok(map)
+    }
+
     /// Find the project ID whose directory matches or contains the given path.
     pub fn find_project_for_path(&self, path: impl AsRef<Path>) -> Result<Option<String>> {
         let target = std::fs::canonicalize(path.as_ref())
@@ -92,6 +101,7 @@ impl SessionRepository {
     /// List sessions ordered by most recently updated.
     pub fn list_sessions(&self) -> Result<Vec<Session>> {
         let projects = self.projects()?;
+        let project_dirs = self.project_directory_map()?;
         let mut stmt = self
             .conn
             .prepare(
@@ -111,6 +121,7 @@ impl SessionRepository {
                     .get(&project_id)
                     .and_then(|p| p.name.clone())
                     .unwrap_or_default();
+                let project_directory = project_dirs.get(&project_id).cloned();
                 let first_message_preview =
                     Self::first_message_preview(&self.conn, &id).ok().flatten();
 
@@ -118,6 +129,7 @@ impl SessionRepository {
                     id,
                     project_id,
                     project_name,
+                    project_directory,
                     slug: row.get(2)?,
                     title: row.get(3)?,
                     agent: row.get(4)?,
@@ -140,6 +152,7 @@ impl SessionRepository {
     /// Get a single session by ID.
     pub fn get_session(&self, id: &str) -> Result<Option<Session>> {
         let projects = self.projects()?;
+        let project_dirs = self.project_directory_map()?;
         let mut stmt = self
             .conn
             .prepare(
@@ -159,6 +172,7 @@ impl SessionRepository {
                     .get(&project_id)
                     .and_then(|p| p.name.clone())
                     .unwrap_or_default();
+                let project_directory = project_dirs.get(&project_id).cloned();
                 let first_message_preview =
                     Self::first_message_preview(&self.conn, &id).ok().flatten();
 
@@ -166,6 +180,7 @@ impl SessionRepository {
                     id,
                     project_id,
                     project_name,
+                    project_directory,
                     slug: row.get(2)?,
                     title: row.get(3)?,
                     agent: row.get(4)?,
@@ -335,6 +350,17 @@ mod tests {
                     position INTEGER,
                     time_created INTEGER,
                     time_updated INTEGER
+                )",
+                [],
+            )
+            .unwrap();
+        repo.conn
+            .execute(
+                "CREATE TABLE project_directory (
+                    project_id TEXT NOT NULL,
+                    directory TEXT NOT NULL,
+                    branch TEXT,
+                    time_created INTEGER
                 )",
                 [],
             )
