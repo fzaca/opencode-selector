@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2026-06-13
+
+### Features
+
+- Redesign main UI layout and components
 ## [0.1.0] - 2026-06-13
 
 ### Bug Fixes
