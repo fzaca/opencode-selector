@@ -149,6 +149,23 @@ impl SessionRepository {
         Ok(())
     }
 
+    /// Permanently delete a session and its associated rows.
+    pub fn delete_session(&self, id: &str) -> Result<()> {
+        self.conn
+            .execute("DELETE FROM message WHERE session_id = ?1", [id])
+            .context("failed to delete session messages")?;
+        self.conn
+            .execute("DELETE FROM part WHERE session_id = ?1", [id])
+            .context("failed to delete session parts")?;
+        self.conn
+            .execute("DELETE FROM todo WHERE session_id = ?1", [id])
+            .context("failed to delete session todos")?;
+        self.conn
+            .execute("DELETE FROM session WHERE id = ?1", [id])
+            .context("failed to delete session")?;
+        Ok(())
+    }
+
     /// Get the preview of the first user message in a session.
     fn first_message_preview(conn: &Connection, session_id: &str) -> Result<Option<String>> {
         let mut stmt = conn
@@ -251,6 +268,32 @@ mod tests {
                 [],
             )
             .unwrap();
+        repo.conn
+            .execute(
+                "CREATE TABLE part (
+                    id TEXT PRIMARY KEY,
+                    message_id TEXT NOT NULL,
+                    session_id TEXT NOT NULL,
+                    time_created INTEGER,
+                    data TEXT
+                )",
+                [],
+            )
+            .unwrap();
+        repo.conn
+            .execute(
+                "CREATE TABLE todo (
+                    session_id TEXT NOT NULL,
+                    content TEXT,
+                    status TEXT,
+                    priority TEXT,
+                    position INTEGER,
+                    time_created INTEGER,
+                    time_updated INTEGER
+                )",
+                [],
+            )
+            .unwrap();
     }
 
     #[test]
@@ -312,5 +355,44 @@ mod tests {
         repo.rename_session("s1", "New").unwrap();
         let session = repo.get_session("s1").unwrap().unwrap();
         assert_eq!(session.title, "New");
+    }
+
+    #[test]
+    fn delete_session_removes_rows() {
+        let repo = SessionRepository::open_in_memory().unwrap();
+        setup_schema(&repo);
+        repo.conn
+            .execute(
+                "INSERT INTO project (id, name) VALUES ('p1', 'project-one')",
+                [],
+            )
+            .unwrap();
+        repo.conn
+            .execute(
+                "INSERT INTO session
+                 (id, project_id, slug, title, time_created, time_updated, summary_files)
+                 VALUES ('s1', 'p1', 'alpha', 'Old', 1000, 1000, 0)",
+                [],
+            )
+            .unwrap();
+        repo.conn
+            .execute(
+                "INSERT INTO message (id, session_id, time_created, data)
+                 VALUES ('m1', 's1', 1000, '{}')",
+                [],
+            )
+            .unwrap();
+
+        repo.delete_session("s1").unwrap();
+        assert!(repo.get_session("s1").unwrap().is_none());
+        let count: i64 = repo
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM message WHERE session_id = 's1'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(count, 0);
     }
 }

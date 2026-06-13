@@ -223,7 +223,7 @@ fn start_delete(app: &mut App) {
 
 fn handle_confirm_key(
     app: &mut App,
-    _repo: &SessionRepository,
+    repo: &SessionRepository,
     store: &mut FolderStore,
     key: KeyEvent,
 ) -> io::Result<AppEvent> {
@@ -231,12 +231,15 @@ fn handle_confirm_key(
         KeyCode::Char('y') | KeyCode::Char('Y') => {
             if app.screen == Screen::ConfirmDelete {
                 if let Some(id) = app.pending_delete_id.take() {
-                    // Note: actual DB delete is intentionally not implemented in MVP
-                    // to avoid accidental data loss. We move to Archive instead.
-                    let _ = store.move_session(&id, "archive");
-                    app.session_folder_map.insert(id, "archive".to_string());
-                    app.set_status("Session archived (delete reserved for safety)");
-                    app.apply_filter_and_sort();
+                    if let Err(e) = repo.delete_session(&id) {
+                        app.set_status(format!("Delete failed: {e}"));
+                    } else {
+                        app.sessions.retain(|s| s.id != id);
+                        app.session_folder_map.remove(&id);
+                        let _ = store.unassign_session(&id);
+                        app.set_status("Session deleted");
+                        app.apply_filter_and_sort();
+                    }
                 }
             }
             app.screen = Screen::Main;
