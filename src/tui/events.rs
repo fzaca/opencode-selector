@@ -323,9 +323,37 @@ fn handle_search_key(app: &mut App, key: KeyEvent) -> io::Result<AppEvent> {
 }
 
 fn handle_preview_key(app: &mut App, key: KeyEvent) -> io::Result<AppEvent> {
-    if key.code == KeyCode::Esc || key.code == KeyCode::Char('q') || key.code == KeyCode::Char('p')
-    {
-        app.screen = Screen::Main;
+    match key.code {
+        KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('p') => {
+            app.screen = Screen::Main;
+            app.preview_scroll = 0;
+        }
+        KeyCode::Up | KeyCode::Char('k') => {
+            app.preview_scroll = app.preview_scroll.saturating_sub(1);
+        }
+        KeyCode::Down | KeyCode::Char('j') => {
+            let session = app.current_session();
+            let total = session
+                .and_then(|s| s.first_message_preview.as_deref())
+                .map(|p| p.lines().count() + 9)
+                .unwrap_or(9);
+            let area = 20;
+            let max_scroll = total.saturating_sub(area);
+            if (app.preview_scroll as usize) < max_scroll {
+                app.preview_scroll += 1;
+            }
+        }
+        KeyCode::PageUp => {
+            app.preview_scroll = app.preview_scroll.saturating_sub(20);
+        }
+        KeyCode::PageDown => {
+            app.preview_scroll = app.preview_scroll.saturating_add(20);
+        }
+        KeyCode::Home => app.preview_scroll = 0,
+        KeyCode::End => {
+            app.preview_scroll = u16::MAX;
+        }
+        _ => {}
     }
     Ok(AppEvent::Continue)
 }

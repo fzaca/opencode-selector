@@ -214,6 +214,12 @@ impl Theme {
             .bg(self.highlight)
             .add_modifier(Modifier::BOLD)
     }
+
+    pub fn dimmed_overlay(self) -> Style {
+        Style::default()
+            .bg(Color::Indexed(0))
+            .fg(self.muted)
+    }
 }
 
 #[cfg(test)]

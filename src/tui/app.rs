@@ -165,6 +165,8 @@ pub struct App {
     pub command_history_pos: Option<usize>,
     pub command_suggestions: Vec<Suggestion>,
     pub selected_suggestion: usize,
+
+    pub preview_scroll: u16,
 }
 
 impl App {
@@ -204,6 +206,8 @@ impl App {
             command_history_pos: None,
             command_suggestions: Vec::new(),
             selected_suggestion: 0,
+
+            preview_scroll: 0,
         };
         app.apply_filter_and_sort();
         app
