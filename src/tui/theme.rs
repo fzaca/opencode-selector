@@ -1,6 +1,8 @@
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::widgets::BorderType;
 
+use crate::config::ThemeConfig;
+
 /// Theme that adapts to the terminal's default 16-color palette.
 #[derive(Debug, Clone, Copy)]
 pub struct Theme {
@@ -37,9 +39,76 @@ impl Theme {
         }
     }
 
+    /// Build a theme from the user's config file, falling back to the terminal
+    /// defaults for any color that is missing or invalid.
+    pub fn from_config(config: Option<&ThemeConfig>) -> Self {
+        let mut theme = Self::terminal();
+        let Some(config) = config else {
+            return theme;
+        };
+
+        if let Some(c) = config.background.as_deref().and_then(parse_hex_color) {
+            theme.background = c;
+        }
+        if let Some(c) = config.foreground.as_deref().and_then(parse_hex_color) {
+            theme.foreground = c;
+        }
+        if let Some(c) = config.accent.as_deref().and_then(parse_hex_color) {
+            theme.accent = c;
+        }
+        if let Some(c) = config.accent_dim.as_deref().and_then(parse_hex_color) {
+            theme.accent_dim = c;
+        }
+        if let Some(c) = config.border.as_deref().and_then(parse_hex_color) {
+            theme.border = c;
+        }
+        if let Some(c) = config.highlight.as_deref().and_then(parse_hex_color) {
+            theme.highlight = c;
+        }
+        if let Some(c) = config.highlight_dim.as_deref().and_then(parse_hex_color) {
+            theme.highlight_dim = c;
+        }
+        if let Some(c) = config.error.as_deref().and_then(parse_hex_color) {
+            theme.error = c;
+        }
+        if let Some(c) = config.warning.as_deref().and_then(parse_hex_color) {
+            theme.warning = c;
+        }
+        if let Some(c) = config.success.as_deref().and_then(parse_hex_color) {
+            theme.success = c;
+        }
+        if let Some(c) = config.muted.as_deref().and_then(parse_hex_color) {
+            theme.muted = c;
+        }
+
+        theme
+    }
+
     pub fn border_type(self) -> BorderType {
         BorderType::Rounded
     }
+}
+
+/// Parse a hex color string as `#RRGGBB` or `#RGB` into a `ratatui::Color`.
+fn parse_hex_color(value: &str) -> Option<Color> {
+    let value = value.trim();
+    if !value.starts_with('#') {
+        return None;
+    }
+    let chars: Vec<char> = value.chars().skip(1).collect();
+    let (r, g, b) = match chars.len() {
+        3 => {
+            let to_byte = |c: char| c.to_digit(16).map(|d| (d * 17) as u8);
+            (to_byte(chars[0])?, to_byte(chars[1])?, to_byte(chars[2])?)
+        }
+        6 => {
+            let parse =
+                |i| u8::from_str_radix(&chars[i..i + 2].iter().collect::<String>(), 16).ok();
+            (parse(0)?, parse(2)?, parse(4)?)
+        }
+        _ => return None,
+    };
+    Some(Color::Rgb(r, g, b))
 }
 
 impl Theme {
@@ -98,5 +167,59 @@ impl Theme {
             .fg(Color::White)
             .bg(self.highlight)
             .add_modifier(Modifier::BOLD)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_hex_color_accepts_six_digit() {
+        assert_eq!(parse_hex_color("#ff5733"), Some(Color::Rgb(255, 87, 51)));
+        assert_eq!(parse_hex_color("#00FF00"), Some(Color::Rgb(0, 255, 0)));
+    }
+
+    #[test]
+    fn parse_hex_color_accepts_three_digit() {
+        assert_eq!(parse_hex_color("#f0f"), Some(Color::Rgb(255, 0, 255)));
+        assert_eq!(parse_hex_color("#abc"), Some(Color::Rgb(170, 187, 204)));
+    }
+
+    #[test]
+    fn parse_hex_color_rejects_invalid() {
+        assert_eq!(parse_hex_color("ff5733"), None);
+        assert_eq!(parse_hex_color("#gggggg"), None);
+        assert_eq!(parse_hex_color("#12345"), None);
+    }
+
+    #[test]
+    fn theme_from_config_overrides_defaults() {
+        let config = ThemeConfig {
+            accent: Some("#ff5733".to_string()),
+            background: Some("#1e1e1e".to_string()),
+            ..Default::default()
+        };
+        let theme = Theme::from_config(Some(&config));
+        assert_eq!(theme.accent, Color::Rgb(255, 87, 51));
+        assert_eq!(theme.background, Color::Rgb(30, 30, 30));
+        assert_eq!(theme.error, Color::Red); // unchanged
+    }
+
+    #[test]
+    fn theme_from_config_ignores_invalid_colors() {
+        let config = ThemeConfig {
+            accent: Some("not-a-color".to_string()),
+            ..Default::default()
+        };
+        let theme = Theme::from_config(Some(&config));
+        assert_eq!(theme.accent, Color::Cyan);
+    }
+
+    #[test]
+    fn theme_from_config_defaults_when_missing() {
+        let theme = Theme::from_config(None);
+        assert_eq!(theme.background, Color::Reset);
+        assert_eq!(theme.accent, Color::Cyan);
     }
 }

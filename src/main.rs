@@ -99,7 +99,7 @@ fn run_tui(config: Config, global_mode: bool) -> Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let theme = Theme::terminal();
+    let theme = Theme::from_config(config.theme());
     let result = run_app(&mut terminal, &mut app, &repo, &mut store, theme);
 
     terminal::disable_raw_mode()?;

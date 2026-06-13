@@ -9,6 +9,41 @@ pub struct ConfigFile {
     /// Whether the folder system is enabled in the TUI.
     #[serde(default)]
     pub folders_enabled: bool,
+
+    /// Optional color overrides. When unset the app falls back to the
+    /// terminal's default 16-color palette.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub theme: Option<ThemeConfig>,
+}
+
+/// Optional color theme overrides in `config.toml`.
+///
+/// Colors may be given as `#RRGGBB` or `#RGB` hex strings. Any field that is
+/// omitted uses the terminal-adaptive default.
+#[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ThemeConfig {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub background: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub foreground: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub accent: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub accent_dim: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub border: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub highlight: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub highlight_dim: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub warning: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub success: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub muted: Option<String>,
 }
 
 /// Application configuration and path resolution.
@@ -107,6 +142,10 @@ impl Config {
 
     pub fn folders_enabled(&self) -> bool {
         self.config_file.folders_enabled
+    }
+
+    pub fn theme(&self) -> Option<&ThemeConfig> {
+        self.config_file.theme.as_ref()
     }
 
     /// Enable or disable folders in memory.
