@@ -28,34 +28,61 @@ pub fn draw(f: &mut Frame, app: &App, area: Rect, theme: Theme) {
         return;
     }
 
-    let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Length(mode_width(app)),
-            Constraint::Min(12),
-            Constraint::Length(shortcut_width(app)),
-        ])
-        .split(inner);
+    let show_badge = should_show_mode_badge(app);
 
-    let mode = Line::from(vec![Span::styled(
-        format!(" {} ", mode_label(app)),
-        theme.badge(),
-    )]);
-    f.render_widget(Paragraph::new(mode), chunks[0]);
+    if show_badge {
+        let chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Length(mode_width(app)),
+                Constraint::Min(12),
+                Constraint::Length(shortcut_width(app)),
+            ])
+            .split(inner);
 
-    let context = Line::from(vec![
-        Span::styled("filter: ", theme.dim()),
-        Span::styled(context_label(app), theme.accent()),
-        Span::styled("  sort: ", theme.dim()),
-        Span::styled(sort_label(app.sort_by), theme.accent()),
-    ]);
-    f.render_widget(Paragraph::new(context), chunks[1]);
+        let mode = Line::from(vec![Span::styled(
+            format!(" {} ", mode_label(app)),
+            theme.badge(),
+        )]);
+        f.render_widget(Paragraph::new(mode), chunks[0]);
 
-    let shortcuts = Line::from(shortcuts(app, theme));
-    f.render_widget(
-        Paragraph::new(shortcuts).alignment(Alignment::Right),
-        chunks[2],
-    );
+        let context = Line::from(vec![
+            Span::styled("filter: ", theme.dim()),
+            Span::styled(context_label(app), theme.accent()),
+            Span::styled("  sort: ", theme.dim()),
+            Span::styled(sort_label(app.sort_by), theme.accent()),
+        ]);
+        f.render_widget(Paragraph::new(context), chunks[1]);
+
+        let shortcuts = Line::from(shortcuts(app, theme));
+        f.render_widget(
+            Paragraph::new(shortcuts).alignment(Alignment::Right),
+            chunks[2],
+        );
+    } else {
+        let chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Min(12), Constraint::Length(shortcut_width(app))])
+            .split(inner);
+
+        let context = Line::from(vec![
+            Span::styled("filter: ", theme.dim()),
+            Span::styled(context_label(app), theme.accent()),
+            Span::styled("  sort: ", theme.dim()),
+            Span::styled(sort_label(app.sort_by), theme.accent()),
+        ]);
+        f.render_widget(Paragraph::new(context), chunks[0]);
+
+        let shortcuts = Line::from(shortcuts(app, theme));
+        f.render_widget(
+            Paragraph::new(shortcuts).alignment(Alignment::Right),
+            chunks[1],
+        );
+    }
+}
+
+fn should_show_mode_badge(app: &App) -> bool {
+    !(app.screen == Screen::Main && app.input_mode == InputMode::Normal)
 }
 
 fn context_label(app: &App) -> String {
