@@ -90,6 +90,9 @@ impl FolderStore {
 
     /// Rename a folder.
     pub fn rename_folder(&mut self, id: &str, name: &str) -> Result<()> {
+        if Self::is_system_folder(id) {
+            anyhow::bail!("cannot rename system folder {}", id);
+        }
         let folder = self
             .data
             .folders
@@ -102,6 +105,9 @@ impl FolderStore {
 
     /// Delete a folder and all mappings pointing to it.
     pub fn delete_folder(&mut self, id: &str) -> Result<()> {
+        if Self::is_system_folder(id) {
+            anyhow::bail!("cannot delete system folder {}", id);
+        }
         let original_len = self.data.folders.len();
         self.data.folders.retain(|f| f.id != id);
         if self.data.folders.len() == original_len {
@@ -111,8 +117,15 @@ impl FolderStore {
         self.save()
     }
 
+    fn is_system_folder(id: &str) -> bool {
+        matches!(id, "all" | "inbox" | "archive")
+    }
+
     /// Move a session into a folder.
     pub fn move_session(&mut self, session_id: &str, folder_id: &str) -> Result<()> {
+        if folder_id == "all" {
+            anyhow::bail!("cannot move sessions to the All folder");
+        }
         if self.folder(folder_id).is_none() {
             anyhow::bail!("folder {} not found", folder_id);
         }
@@ -169,10 +182,11 @@ impl FolderStore {
     }
 
     fn ensure_defaults(&mut self) {
-        let default_ids: &[&str] = &["inbox", "archive"];
+        let default_ids: &[&str] = &["all", "inbox", "archive"];
         for id in default_ids {
             if !self.data.folders.iter().any(|f| f.id == *id) {
                 let name = match *id {
+                    "all" => "All",
                     "inbox" => "Inbox",
                     "archive" => "Archive",
                     _ => id,
@@ -192,9 +206,10 @@ mod tests {
     fn store_creates_defaults() {
         let store = FolderStore::in_memory();
         let folders: Vec<_> = store.folders().to_vec();
-        assert_eq!(folders.len(), 2);
-        assert_eq!(folders[0].id, "inbox");
-        assert_eq!(folders[1].id, "archive");
+        assert_eq!(folders.len(), 3);
+        assert_eq!(folders[0].id, "all");
+        assert_eq!(folders[1].id, "inbox");
+        assert_eq!(folders[2].id, "archive");
     }
 
     #[test]

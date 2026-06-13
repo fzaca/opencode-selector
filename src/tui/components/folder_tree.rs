@@ -37,7 +37,9 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect, theme: Theme) {
                 .values()
                 .filter(|&fid| fid == &folder.id)
                 .count();
-            let label = if folder.id == "inbox" {
+            let label = if folder.id == "all" {
+                format!("🌐 {} ({})", folder.name, app.sessions.len())
+            } else if folder.id == "inbox" {
                 format!("📥 {} ({})", folder.name, count)
             } else if folder.id == "archive" {
                 format!("🗃  {} ({})", folder.name, count)

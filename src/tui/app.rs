@@ -96,14 +96,11 @@ impl App {
             .iter()
             .enumerate()
             .filter(|(_, s)| {
-                // Filter by folder, unless we are in the inbox (default) where
-                // unassigned sessions also appear.
+                // The All folder shows every session. Every other folder shows
+                // only sessions explicitly assigned to it.
                 if let Some(fid) = folder_id {
-                    if fid == "inbox" {
-                        self.session_folder_map
-                            .get(&s.id)
-                            .map(|f| f == "inbox")
-                            .unwrap_or(true)
+                    if fid == "all" {
+                        true
                     } else {
                         self.session_folder_map
                             .get(&s.id)

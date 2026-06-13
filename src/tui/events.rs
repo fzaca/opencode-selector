@@ -105,6 +105,7 @@ fn handle_main_key(
         KeyCode::Char('d') => archive_current(app, store),
         KeyCode::Char('D') => start_delete(app),
         KeyCode::Char('s') => app.cycle_sort(),
+        KeyCode::Char('a') => jump_to_folder(app, "all"),
         KeyCode::Char('N') => start_new_folder(app),
         KeyCode::Char('g') => app.pending_key = Some('g'),
         KeyCode::Char('G') => {
@@ -351,6 +352,13 @@ fn handle_new_folder_key(
         _ => {}
     }
     Ok(AppEvent::Continue)
+}
+
+fn jump_to_folder(app: &mut App, folder_id: &str) {
+    if let Some(idx) = app.folders.iter().position(|f| f.id == folder_id) {
+        app.selected_folder = idx;
+        app.apply_filter_and_sort();
+    }
 }
 
 fn slugify(name: &str) -> String {

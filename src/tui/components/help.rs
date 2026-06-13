@@ -28,6 +28,7 @@ pub fn draw(f: &mut Frame, area: Rect, theme: Theme) {
         Line::from("m                Move session to folder"),
         Line::from("d                Move session to Archive"),
         Line::from("D                Permanently delete session"),
+        Line::from("a                Jump to All folder"),
         Line::from(""),
         Line::from(vec![Span::styled("Search & Sort", theme.accent())]),
         Line::from("/                Start search"),
