@@ -1,6 +1,15 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+## [0.4.0] - 2026-06-13
+
+### Features
+- Add command mode with fuzzy autocomplete (`:` prefix) ([e94c5ad](e94c5ad))
+
+### Bug Fixes
+- Execute command on Enter in command mode instead of only accepting suggestion ([e94c5ad](e94c5ad))
+- Fill command bar background with theme color to avoid visual artifacts ([1d97a6e](1d97a6e))
+- Prevent empty suggestion area from showing wrong background ([937714d](937714d))
+- Fill entire screen background with theme color ([e94c5ad](e94c5ad))
 
 ## [0.3.0] - 2026-06-13
 
