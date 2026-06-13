@@ -32,20 +32,15 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect, theme: Theme) {
             } else {
                 theme.default_style()
             };
-            let count = app
-                .session_folder_map
-                .values()
-                .filter(|&fid| fid == &folder.id)
-                .count();
-            let label = if folder.id == "all" {
-                format!("🌐 {} ({})", folder.name, app.sessions.len())
-            } else if folder.id == "inbox" {
-                format!("📥 {} ({})", folder.name, count)
-            } else if folder.id == "archive" {
-                format!("🗃  {} ({})", folder.name, count)
+            let count = if folder.id == "all" {
+                app.sessions.len()
             } else {
-                format!("📁 {} ({})", folder.name, count)
+                app.session_folder_map
+                    .values()
+                    .filter(|&fid| fid == &folder.id)
+                    .count()
             };
+            let label = format!("{} ({})", folder.name, count);
             ListItem::new(Line::from(vec![Span::styled(label, style)])).style(style)
         })
         .collect();

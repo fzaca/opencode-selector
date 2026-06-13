@@ -118,7 +118,7 @@ impl FolderStore {
     }
 
     fn is_system_folder(id: &str) -> bool {
-        matches!(id, "all" | "inbox" | "archive")
+        matches!(id, "all" | "archive")
     }
 
     /// Move a session into a folder.
@@ -182,12 +182,11 @@ impl FolderStore {
     }
 
     fn ensure_defaults(&mut self) {
-        let default_ids: &[&str] = &["all", "inbox", "archive"];
+        let default_ids: &[&str] = &["all", "archive"];
         for id in default_ids {
             if !self.data.folders.iter().any(|f| f.id == *id) {
                 let name = match *id {
                     "all" => "All",
-                    "inbox" => "Inbox",
                     "archive" => "Archive",
                     _ => id,
                 };
@@ -206,10 +205,9 @@ mod tests {
     fn store_creates_defaults() {
         let store = FolderStore::in_memory();
         let folders: Vec<_> = store.folders().to_vec();
-        assert_eq!(folders.len(), 3);
+        assert_eq!(folders.len(), 2);
         assert_eq!(folders[0].id, "all");
-        assert_eq!(folders[1].id, "inbox");
-        assert_eq!(folders[2].id, "archive");
+        assert_eq!(folders[1].id, "archive");
     }
 
     #[test]
