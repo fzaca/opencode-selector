@@ -1,9 +1,9 @@
 use ratatui::{
     Frame,
-    layout::{Alignment, Rect},
+    layout::Rect,
     style::Modifier,
     text::{Line, Span},
-    widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph},
+    widgets::{Block, BorderType, Borders, Paragraph},
 };
 
 use crate::db::Session;
@@ -23,39 +23,75 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect, theme: Theme) {
         .title_style(theme.highlight());
 
     if app.filtered_indices.is_empty() {
-        let empty = Paragraph::new("No sessions match")
-            .alignment(Alignment::Center)
-            .block(block);
-        f.render_widget(empty, area);
+        f.render_widget(
+            Paragraph::new("No sessions match").block(block),
+            area,
+        );
         return;
     }
 
-    let inner_width = area.width.saturating_sub(4).max(10) as usize;
+    let inner = block.inner(area);
+    let inner_width = inner.width.saturating_sub(2).max(10) as usize;
+    let item_height = 3;
+    let visible_rows = (inner.height as usize) / item_height;
 
-    let items: Vec<ListItem> = app
-        .filtered_indices
-        .iter()
-        .enumerate()
-        .map(|(visible_idx, &session_idx)| {
-            let session = &app.sessions[session_idx];
-            let is_selected = visible_idx == app.selected_session;
-            ListItem::new(session_item(session, inner_width, theme, is_selected)).style(
-                if is_selected {
+    if visible_rows == 0 {
+        f.render_widget(block, area);
+        return;
+    }
+
+    let total = app.filtered_indices.len();
+    let max_scroll = total.saturating_sub(visible_rows);
+    if app.selected_session > max_scroll {
+        app.selected_session = max_scroll;
+    }
+
+    let scroll = app.selected_session;
+    let mut y = inner.y;
+
+    for i in scroll..total.min(scroll + visible_rows) {
+        let session = &app.sessions[app.filtered_indices[i]];
+        let is_sel = i == app.selected_session;
+
+        for (li, line) in session_item(session, inner_width, theme, is_sel)
+            .into_iter()
+            .enumerate()
+        {
+            let cell = Rect {
+                x: inner.x + 1,
+                y: y + li as u16,
+                width: inner.width.saturating_sub(2),
+                height: 1,
+            };
+            f.render_widget(
+                Paragraph::new(line).style(if is_sel {
                     theme.selected()
                 } else {
                     theme.default_style()
-                },
-            )
-        })
-        .collect();
+                }),
+                cell,
+            );
+        }
 
-    let mut state = ListState::default().with_selected(Some(app.selected_session));
-    let list = List::new(items)
-        .block(block)
-        .highlight_style(theme.selected())
-        .highlight_symbol("▸ ");
+        y += item_height as u16;
+    }
 
-    f.render_stateful_widget(list, area, &mut state);
+    if total > visible_rows {
+        let track_h = inner.height as usize;
+        let thumb = scroll * track_h / total;
+        let thumb_end = ((scroll + visible_rows) * track_h).div_ceil(total).min(track_h);
+
+        let x = inner.x + inner.width - 1;
+        for ty in 0..track_h as u16 {
+            let in_thumb = (ty as usize) >= thumb && (ty as usize) < thumb_end;
+            f.render_widget(
+                Paragraph::new(if in_thumb { "█" } else { "░" }).style(
+                    if in_thumb { theme.accent() } else { theme.dim() },
+                ),
+                Rect { x, y: inner.y + ty, width: 1, height: 1 },
+            );
+        }
+    }
 }
 
 fn session_item<'a>(
@@ -65,7 +101,7 @@ fn session_item<'a>(
     selected: bool,
 ) -> Vec<Line<'a>> {
     let title_style = if selected {
-        theme.selected()
+        theme.selected().add_modifier(Modifier::BOLD)
     } else {
         theme.accent().add_modifier(Modifier::BOLD)
     };
@@ -75,28 +111,40 @@ fn session_item<'a>(
         theme.dim()
     };
 
-    let title = truncate(session.display_title(), width);
+    let prefix = if selected {
+        Span::styled("▸ ", theme.selected())
+    } else {
+        Span::styled("  ", theme.dim())
+    };
+
+    let title = truncate(session.display_title(), width.saturating_sub(2));
     let meta = format!(
         "{} · {}",
-        relative_time(session.updated_at),
+        short_ago(session.updated_at),
         session.project_name,
     );
 
     let mut lines = vec![
-        Line::from(vec![Span::styled(title, title_style)]),
-        Line::from(vec![Span::styled(truncate(&meta, width), meta_style)]),
+        Line::from(vec![prefix.clone(), Span::styled(title, title_style)]),
+        Line::from(vec![
+            Span::raw("  "),
+            Span::styled(truncate(&meta, width.saturating_sub(2)), meta_style),
+        ]),
     ];
 
     if let Some(preview) = session.first_message_preview.as_deref() {
-        let preview_text = truncate(preview, width);
-        lines.push(Line::from(vec![Span::styled(
-            preview_text,
-            if selected {
-                theme.selected_dim()
-            } else {
-                theme.muted()
-            },
-        )]));
+        let preview_text = truncate(preview, width.saturating_sub(2));
+        lines.push(Line::from(vec![
+            Span::raw("  "),
+            Span::styled(
+                preview_text,
+                if selected {
+                    theme.selected_dim()
+                } else {
+                    theme.muted()
+                },
+            ),
+        ]));
     }
 
     lines
@@ -104,26 +152,27 @@ fn session_item<'a>(
 
 fn sort_badge(sort: SortBy) -> String {
     match sort {
-        SortBy::Updated => "↻ updated".to_string(),
-        SortBy::Created => "+ created".to_string(),
-        SortBy::Title => "≡ title".to_string(),
+        SortBy::Updated => "↻ updated",
+        SortBy::Created => "+ created",
+        SortBy::Title => "≡ title",
     }
+    .to_string()
 }
 
-fn relative_time(dt: chrono::DateTime<chrono::Utc>) -> String {
+fn short_ago(dt: chrono::DateTime<chrono::Utc>) -> String {
     let now = chrono::Utc::now();
     let diff = now.signed_duration_since(dt);
 
     if diff.num_seconds() < 60 {
-        "just now".to_string()
+        "now".to_string()
     } else if diff.num_minutes() < 60 {
-        format!("{}m ago", diff.num_minutes())
+        format!("{}m", diff.num_minutes())
     } else if diff.num_hours() < 24 {
-        format!("{}h ago", diff.num_hours())
+        format!("{}h", diff.num_hours())
     } else if diff.num_days() < 7 {
-        format!("{}d ago", diff.num_days())
+        format!("{}d", diff.num_days())
     } else {
-        dt.format("%Y-%m-%d").to_string()
+        dt.format("%m/%d").to_string()
     }
 }
 
