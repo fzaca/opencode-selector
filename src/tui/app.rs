@@ -50,6 +50,8 @@ pub struct App {
     pub pending_key: Option<char>,
     pub project_filter: Option<String>,
     pub current_project: Option<String>,
+    pub folders_enabled: bool,
+    pub global_mode: bool,
 }
 
 impl App {
@@ -58,6 +60,8 @@ impl App {
         folders: Vec<Folder>,
         mappings: HashMap<String, String>,
         project_filter: Option<String>,
+        folders_enabled: bool,
+        global_mode: bool,
     ) -> Self {
         let current_project = project_filter.clone();
         let mut app = Self {
@@ -79,6 +83,8 @@ impl App {
             pending_key: None,
             project_filter,
             current_project,
+            folders_enabled,
+            global_mode,
         };
         app.apply_filter_and_sort();
         app
@@ -219,5 +225,14 @@ impl App {
     pub fn set_project_filter(&mut self, project_id: Option<String>) {
         self.project_filter = project_id;
         self.apply_filter_and_sort();
+    }
+
+    pub fn toggle_folders(&mut self) {
+        self.folders_enabled = !self.folders_enabled;
+        if self.folders_enabled {
+            self.set_status("Folders enabled");
+        } else {
+            self.set_status("Folders disabled");
+        }
     }
 }

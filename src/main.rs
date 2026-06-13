@@ -28,8 +28,13 @@ fn main() -> Result<()> {
     if let Some(ref folders) = cli.folders {
         config = config.with_folders_path(folders);
     }
+    if cli.folders_enabled {
+        config.set_folders_enabled(true);
+    }
 
     config.ensure_dirs()?;
+
+    let global_mode = cli.global || matches!(cli.command, Some(Command::Global));
 
     match cli.command {
         Some(Command::Session { id }) => {
@@ -40,10 +45,10 @@ fn main() -> Result<()> {
             list_sessions(&config)?;
             return Ok(());
         }
-        None => {}
+        Some(Command::Global) | None => {}
     }
 
-    run_tui(config)?;
+    run_tui(config, global_mode)?;
     Ok(())
 }
 
@@ -55,7 +60,7 @@ fn list_sessions(config: &Config) -> Result<()> {
     Ok(())
 }
 
-fn run_tui(config: Config) -> Result<()> {
+fn run_tui(config: Config, global_mode: bool) -> Result<()> {
     let repo = SessionRepository::open(config.opencode_db_path())
         .context("failed to open opencode database")?;
     let sessions = repo.list_sessions().context("failed to list sessions")?;
@@ -65,12 +70,28 @@ fn run_tui(config: Config) -> Result<()> {
     let folders = store.folders().to_vec();
     let mappings = store.session_folder_map();
 
-    let cwd = std::env::current_dir().context("failed to get current directory")?;
-    let project_filter = repo
-        .find_project_for_path(&cwd)
-        .context("failed to resolve project for current directory")?;
+    let project_filter = if global_mode {
+        None
+    } else {
+        let cwd = std::env::current_dir().context("failed to get current directory")?;
+        repo.find_project_for_path(&cwd)
+            .context("failed to resolve project for current directory")?
+    };
 
-    let mut app = App::new(sessions, folders, mappings, project_filter);
+    let folders_enabled = if global_mode {
+        false
+    } else {
+        config.folders_enabled()
+    };
+
+    let mut app = App::new(
+        sessions,
+        folders,
+        mappings,
+        project_filter,
+        folders_enabled,
+        global_mode,
+    );
 
     terminal::enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -90,7 +111,13 @@ fn run_tui(config: Config) -> Result<()> {
     terminal.show_cursor()?;
 
     match result? {
-        AppEvent::LaunchSession { id } => opencode::launch_session(&id)?,
+        AppEvent::LaunchSession { id, cwd } => {
+            if let Some(dir) = cwd {
+                opencode::launch_session_in_dir(&id, dir)?;
+            } else {
+                opencode::launch_session(&id)?;
+            }
+        }
         AppEvent::LaunchNew => opencode::launch_new()?,
         AppEvent::Quit | AppEvent::Continue => {}
     }

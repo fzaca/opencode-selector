@@ -42,13 +42,17 @@ fn draw_main(f: &mut Frame, app: &mut App, theme: Theme) {
         .constraints([Constraint::Min(3), Constraint::Length(3)])
         .split(size);
 
-    let body_chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(25), Constraint::Percentage(75)])
-        .split(main_chunks[0]);
+    if app.folders_enabled {
+        let body_chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Percentage(25), Constraint::Percentage(75)])
+            .split(main_chunks[0]);
 
-    folder_tree::draw(f, app, body_chunks[0], theme);
-    session_list::draw(f, app, body_chunks[1], theme);
+        folder_tree::draw(f, app, body_chunks[0], theme);
+        session_list::draw(f, app, body_chunks[1], theme);
+    } else {
+        session_list::draw(f, app, main_chunks[0], theme);
+    }
 
     if matches!(app.input_mode, InputMode::Search) && app.screen == Screen::Main {
         let search_area = Layout::default()

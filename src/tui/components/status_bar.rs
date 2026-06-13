@@ -32,11 +32,19 @@ pub fn draw(f: &mut Frame, app: &App, area: Rect, theme: Theme) {
 }
 
 fn project_label(app: &App) -> String {
-    if app.project_filter.is_some() {
-        "project".to_string()
+    let project = if app.project_filter.is_some() {
+        "project"
     } else {
-        "all projects".to_string()
-    }
+        "all projects"
+    };
+    let folders = if app.global_mode {
+        "no folders"
+    } else if app.folders_enabled {
+        "folders"
+    } else {
+        "flat"
+    };
+    format!("{} | {}", project, folders)
 }
 
 fn mode_label(app: &App) -> String {
@@ -76,6 +84,7 @@ fn shortcuts<'a>(app: &App, theme: Theme) -> Vec<Span<'a>> {
                 Span::raw("d: archive  "),
                 Span::raw("D: delete  "),
                 Span::raw("P: projects  "),
+                Span::raw("F: folders  "),
                 Span::raw("?: help  "),
                 Span::styled("q", theme.accent().add_modifier(Modifier::BOLD)),
                 Span::raw(": quit"),

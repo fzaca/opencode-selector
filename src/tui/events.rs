@@ -10,7 +10,10 @@ use crate::tui::app::{App, InputMode, Screen};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AppEvent {
     Continue,
-    LaunchSession { id: String },
+    LaunchSession {
+        id: String,
+        cwd: Option<std::path::PathBuf>,
+    },
     LaunchNew,
     Quit,
 }
@@ -101,21 +104,54 @@ fn handle_main_key(
             }
         }
         KeyCode::Char('r') => start_rename(app),
-        KeyCode::Char('m') => start_move(app),
+        KeyCode::Char('m') => {
+            if app.folders_enabled {
+                start_move(app);
+            } else {
+                app.set_status("Enable folders with F to move sessions");
+            }
+        }
         KeyCode::Char('d') => archive_current(app, store),
         KeyCode::Char('D') => start_delete(app),
         KeyCode::Char('s') => app.cycle_sort(),
-        KeyCode::Char('a') => jump_to_folder(app, "all"),
+        KeyCode::Char('a') => {
+            if app.folders_enabled {
+                jump_to_folder(app, "all");
+            } else {
+                app.set_status("Enable folders with F to use folder shortcuts");
+            }
+        }
         KeyCode::Char('P') => app.toggle_project_filter(),
-        KeyCode::Char('N') => start_new_folder(app),
+        KeyCode::Char('F') => {
+            if app.global_mode {
+                app.set_status("Folders are disabled in global mode");
+            } else {
+                app.toggle_folders();
+            }
+        }
+        KeyCode::Char('N') => {
+            if app.folders_enabled {
+                start_new_folder(app);
+            } else {
+                app.set_status("Enable folders with F to create folders");
+            }
+        }
         KeyCode::Char('g') => app.pending_key = Some('g'),
         KeyCode::Char('G') => {
             app.selected_session = app.filtered_indices.len().saturating_sub(1);
         }
         KeyCode::Down | KeyCode::Char('j') => app.move_selection_down(),
         KeyCode::Up | KeyCode::Char('k') => app.move_selection_up(),
-        KeyCode::Left | KeyCode::Char('h') => app.move_folder_up(),
-        KeyCode::Right | KeyCode::Char('l') => app.move_folder_down(),
+        KeyCode::Left | KeyCode::Char('h') => {
+            if app.folders_enabled {
+                app.move_folder_up();
+            }
+        }
+        KeyCode::Right | KeyCode::Char('l') => {
+            if app.folders_enabled {
+                app.move_folder_down();
+            }
+        }
         KeyCode::PageDown => {
             for _ in 0..10 {
                 app.move_selection_down();
@@ -130,8 +166,17 @@ fn handle_main_key(
         KeyCode::End => app.selected_session = app.filtered_indices.len().saturating_sub(1),
         KeyCode::Enter => {
             if let Some(session) = app.current_session() {
+                let cwd = if app.global_mode {
+                    session
+                        .project_directory
+                        .clone()
+                        .map(std::path::PathBuf::from)
+                } else {
+                    None
+                };
                 return Ok(AppEvent::LaunchSession {
                     id: session.id.clone(),
+                    cwd,
                 });
             }
         }
