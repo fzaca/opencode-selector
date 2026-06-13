@@ -169,22 +169,27 @@ impl SessionRepository {
     fn first_message_preview(conn: &Connection, session_id: &str) -> Result<Option<String>> {
         let mut stmt = conn
             .prepare(
-                "SELECT data FROM message
+                "SELECT data FROM part
                  WHERE session_id = ?1
                  ORDER BY time_created ASC
-                 LIMIT 1",
+                 LIMIT 50",
             )
-            .context("failed to prepare message query")?;
+            .context("failed to prepare part query")?;
 
-        let text: Option<String> = stmt
-            .query_row([session_id], |row| {
+        let rows = stmt
+            .query_map([session_id], |row| {
                 let data: String = row.get(0)?;
-                Ok(extract_text_preview(&data))
+                Ok(data)
             })
-            .optional()
-            .context("failed to query first message")?
-            .flatten();
-        Ok(text)
+            .context("failed to query parts")?;
+
+        for row in rows {
+            let data = row.context("failed to read part row")?;
+            if let Some(text) = extract_text_preview(&data) {
+                return Ok(Some(text));
+            }
+        }
+        Ok(None)
     }
 }
 
