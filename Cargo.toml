@@ -1,0 +1,43 @@
+[package]
+name = "opencode-selector"
+version = "0.1.0"
+edition = "2024"
+authors = ["Zacarias <fzaca@example.com>"]
+description = "A beautiful TUI for selecting, organizing, and launching opencode sessions."
+license = "MIT"
+repository = "https://github.com/fzaca/opencode-selector"
+keywords = ["opencode", "tui", "ratatui", "session", "selector"]
+categories = ["command-line-utilities"]
+rust-version = "1.85"
+
+[[bin]]
+name = "opcs"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1.0"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+clap = { version = "4.5", features = ["derive"] }
+color-eyre = "0.6"
+crossterm = { version = "0.28", features = ["event-stream"] }
+directories = "5.0"
+nucleo = "0.5"
+ratatui = "0.29"
+reqwest = { version = "0.12", features = ["blocking", "json"] }
+ron = "0.8"
+rusqlite = { version = "0.32", features = ["bundled", "chrono"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+tokio = { version = "1.43", features = ["rt-multi-thread", "macros"] }
+toml = "0.8"
+unicode-width = "0.2"
+
+[dev-dependencies]
+tempfile = "3.14"
+
+[profile.release]
+opt-level = 3
+lto = true
+strip = true
+codegen-units = 1
