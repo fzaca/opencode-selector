@@ -1,9 +1,9 @@
 use ratatui::{
+    Frame,
     layout::Rect,
-    style::{Modifier, Style},
+    style::Modifier,
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
-    Frame,
 };
 
 use crate::tui::app::{App, InputMode, Screen};
@@ -21,7 +21,7 @@ pub fn draw(f: &mut Frame, app: &App, area: Rect, theme: Theme) {
     } else {
         spans.push(Span::styled(mode_label(app), theme.highlight()));
         spans.push(Span::raw(" | "));
-        spans.extend(shortcuts(app));
+        spans.extend(shortcuts(app, theme));
     }
 
     let line = Line::from(spans);
@@ -47,11 +47,11 @@ fn mode_label(app: &App) -> String {
     }
 }
 
-fn shortcuts(app: &App) -> Vec<Span<'_>> {
+fn shortcuts<'a>(app: &App, theme: Theme) -> Vec<Span<'a>> {
     match app.input_mode {
         InputMode::Search => vec![
             Span::raw("Enter: search  "),
-            Span::styled("Esc", theme_style(app)),
+            Span::styled("Esc", theme.accent().add_modifier(Modifier::BOLD)),
             Span::raw(": clear"),
         ],
         _ => match app.screen {
@@ -66,17 +66,13 @@ fn shortcuts(app: &App) -> Vec<Span<'_>> {
                 Span::raw("d: archive  "),
                 Span::raw("D: delete  "),
                 Span::raw("?: help  "),
-                Span::styled("q", theme_style(app)),
+                Span::styled("q", theme.accent().add_modifier(Modifier::BOLD)),
                 Span::raw(": quit"),
             ],
             _ => vec![
-                Span::styled("Esc/q", theme_style(app)),
+                Span::styled("Esc/q", theme.accent().add_modifier(Modifier::BOLD)),
                 Span::raw(": back"),
             ],
         },
     }
-}
-
-fn theme_style(_app: &App) -> Style {
-    Theme::terminal().accent().add_modifier(Modifier::BOLD)
 }
