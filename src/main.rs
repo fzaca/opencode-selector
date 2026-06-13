@@ -5,8 +5,8 @@ use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture},
     terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
+use ratatui::backend::CrosstermBackend;
 
 use opencode_selector::cli::{Cli, Command};
 use opencode_selector::config::Config;
@@ -15,7 +15,7 @@ use opencode_selector::folders::FolderStore;
 use opencode_selector::opencode;
 use opencode_selector::tui::theme::Theme;
 use opencode_selector::tui::ui::draw;
-use opencode_selector::tui::{next_event, App, AppEvent};
+use opencode_selector::tui::{App, AppEvent, next_event};
 
 fn main() -> Result<()> {
     color_eyre::install().expect("failed to install error handler");
@@ -60,8 +60,8 @@ fn run_tui(config: Config) -> Result<()> {
         .context("failed to open opencode database")?;
     let sessions = repo.list_sessions().context("failed to list sessions")?;
 
-    let mut store = FolderStore::open(config.folders_path())
-        .context("failed to open folder store")?;
+    let mut store =
+        FolderStore::open(config.folders_path()).context("failed to open folder store")?;
     let folders = store.folders().to_vec();
     let mappings = store.session_folder_map();
 
