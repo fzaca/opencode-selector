@@ -129,13 +129,22 @@ fn draw_command_bar(f: &mut Frame, app: &App, area: Rect, theme: Theme) {
     f.render_widget(Clear, area);
     f.render_widget(Block::default().style(theme.default_style()), area);
 
-    let suggestion_rows = app.command_suggestions.len().min(6) as u16 + 2;
+    let has_suggestions = !app.command_suggestions.is_empty();
+    let suggestion_rows = if has_suggestions {
+        app.command_suggestions.len().min(6) as u16 + 2
+    } else {
+        0
+    };
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(suggestion_rows),
-            Constraint::Length(3),
-        ])
+        .constraints(if has_suggestions {
+            vec![
+                Constraint::Length(suggestion_rows),
+                Constraint::Length(3),
+            ]
+        } else {
+            vec![Constraint::Length(3)]
+        })
         .split(area);
 
     if !app.command_suggestions.is_empty() {
@@ -185,7 +194,7 @@ fn draw_command_bar(f: &mut Frame, app: &App, area: Rect, theme: Theme) {
         f.render_stateful_widget(list, sinner, &mut list_state);
     }
 
-    let input_area = chunks[if app.command_suggestions.is_empty() { 0 } else { 1 }];
+    let input_area = chunks[if has_suggestions { 1 } else { 0 }];
     let input_block = Block::default()
         .borders(Borders::ALL)
         .border_type(theme.border_type())
