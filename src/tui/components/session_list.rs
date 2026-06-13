@@ -3,7 +3,7 @@ use ratatui::{
     layout::{Alignment, Rect},
     style::Modifier,
     text::{Line, Span},
-    widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph},
+    widgets::{Block, BorderType, Borders, Paragraph},
 };
 
 use crate::db::Session;
@@ -23,39 +23,121 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect, theme: Theme) {
         .title_style(theme.highlight());
 
     if app.filtered_indices.is_empty() {
-        let empty = Paragraph::new("No sessions match")
-            .alignment(Alignment::Center)
-            .block(block);
-        f.render_widget(empty, area);
+        f.render_widget(
+            Paragraph::new("No sessions match")
+                .alignment(Alignment::Center)
+                .block(block),
+            area,
+        );
         return;
     }
 
-    let inner_width = area.width.saturating_sub(4).max(10) as usize;
+    let inner = block.inner(area);
+    let item_height = item_lines(app).saturating_add(1);
+    let visible_rows = (inner.height as usize).saturating_sub(1);
 
-    let items: Vec<ListItem> = app
-        .filtered_indices
-        .iter()
-        .enumerate()
-        .map(|(visible_idx, &session_idx)| {
-            let session = &app.sessions[session_idx];
-            let is_selected = visible_idx == app.selected_session;
-            ListItem::new(session_item(session, inner_width, theme, is_selected)).style(
-                if is_selected {
-                    theme.selected()
-                } else {
-                    theme.default_style()
-                },
-            )
-        })
-        .collect();
+    if visible_rows == 0 {
+        return;
+    }
 
-    let mut state = ListState::default().with_selected(Some(app.selected_session));
-    let list = List::new(items)
-        .block(block)
-        .highlight_style(theme.selected())
-        .highlight_symbol("▸ ");
+    let total_items = app.filtered_indices.len();
+    let max_scroll = total_items.saturating_sub(visible_rows / item_height);
 
-    f.render_stateful_widget(list, area, &mut state);
+    if app.selected_session > max_scroll {
+        app.selected_session = max_scroll;
+    }
+
+    let scroll = app.selected_session;
+    let inner_width = inner.width.saturating_sub(2).max(10) as usize;
+
+    let mut y = inner.y;
+    let mut visible_idx = scroll;
+    let mut rendered = 0;
+
+    while y + item_height as u16 <= inner.y + inner.height {
+        if visible_idx >= total_items {
+            break;
+        }
+
+        let session = &app.sessions[app.filtered_indices[visible_idx]];
+        let is_sel = visible_idx == app.selected_session;
+
+        let lines = session_item(session, inner_width, theme, is_sel);
+        for (li, line) in lines.iter().enumerate() {
+            let line_area = Rect {
+                x: inner.x + 1,
+                y: y + li as u16,
+                width: inner.width.saturating_sub(2),
+                height: 1,
+            };
+            f.render_widget(
+                Paragraph::new(line.clone()).style(
+                    if is_sel { theme.selected() } else { theme.default_style() },
+                ),
+                line_area,
+            );
+        }
+
+        y += item_height as u16;
+        visible_idx += 1;
+        rendered += 1;
+    }
+
+    let scrollbar_area = Rect {
+        x: inner.x + inner.width - 1,
+        y: inner.y,
+        width: 1,
+        height: inner.height,
+    };
+    if total_items > visible_rows / item_height {
+        let track_height = inner.height as usize;
+        let thumb_pos = if total_items > 0 {
+            scroll * track_height / total_items
+        } else {
+            0
+        };
+        let thumb_end = if total_items > 0 {
+            ((scroll + rendered) * track_height).div_ceil(total_items)
+        } else {
+            0
+        };
+
+        for ty in 0..track_height {
+            if ty >= thumb_pos && ty < thumb_end {
+                f.render_widget(
+                    Paragraph::new("█").style(theme.accent()),
+                    Rect {
+                        x: scrollbar_area.x,
+                        y: scrollbar_area.y + ty as u16,
+                        width: 1,
+                        height: 1,
+                    },
+                );
+            } else {
+                f.render_widget(
+                    Paragraph::new("░").style(theme.dim()),
+                    Rect {
+                        x: scrollbar_area.x,
+                        y: scrollbar_area.y + ty as u16,
+                        width: 1,
+                        height: 1,
+                    },
+                );
+            }
+        }
+    }
+}
+
+fn item_lines(app: &App) -> usize {
+    app.filtered_indices
+        .first()
+        .and_then(|&idx| app.sessions.get(idx))
+        .map(item_line_count)
+        .unwrap_or(2)
+}
+
+fn item_line_count(session: &Session) -> usize {
+    if session.first_message_preview.is_some() { 3 } else { 2 }
 }
 
 fn session_item<'a>(
@@ -75,28 +157,35 @@ fn session_item<'a>(
         theme.dim()
     };
 
-    let title = truncate(session.display_title(), width);
+    let prefix = Span::styled("  ", theme.dim());
+    let title = truncate(session.display_title(), width.saturating_sub(2));
     let meta = format!(
         "{} · {}",
-        relative_time(session.updated_at),
+        short_ago(session.updated_at),
         session.project_name,
     );
 
     let mut lines = vec![
-        Line::from(vec![Span::styled(title, title_style)]),
-        Line::from(vec![Span::styled(truncate(&meta, width), meta_style)]),
+        Line::from(vec![prefix.clone(), Span::styled(title, title_style)]),
+        Line::from(vec![
+            Span::raw("  "),
+            Span::styled(truncate(&meta, width.saturating_sub(2)), meta_style),
+        ]),
     ];
 
     if let Some(preview) = session.first_message_preview.as_deref() {
-        let preview_text = truncate(preview, width);
-        lines.push(Line::from(vec![Span::styled(
-            preview_text,
-            if selected {
-                theme.selected_dim()
-            } else {
-                theme.muted()
-            },
-        )]));
+        let preview_text = truncate(preview, width.saturating_sub(2));
+        lines.push(Line::from(vec![
+            Span::raw("  "),
+            Span::styled(
+                preview_text,
+                if selected {
+                    theme.selected_dim()
+                } else {
+                    theme.muted()
+                },
+            ),
+        ]));
     }
 
     lines
@@ -104,26 +193,27 @@ fn session_item<'a>(
 
 fn sort_badge(sort: SortBy) -> String {
     match sort {
-        SortBy::Updated => "↻ updated".to_string(),
-        SortBy::Created => "+ created".to_string(),
-        SortBy::Title => "≡ title".to_string(),
+        SortBy::Updated => "↻ updated",
+        SortBy::Created => "+ created",
+        SortBy::Title => "≡ title",
     }
+    .to_string()
 }
 
-fn relative_time(dt: chrono::DateTime<chrono::Utc>) -> String {
+fn short_ago(dt: chrono::DateTime<chrono::Utc>) -> String {
     let now = chrono::Utc::now();
     let diff = now.signed_duration_since(dt);
 
     if diff.num_seconds() < 60 {
-        "just now".to_string()
+        "now".to_string()
     } else if diff.num_minutes() < 60 {
-        format!("{}m ago", diff.num_minutes())
+        format!("{}m", diff.num_minutes())
     } else if diff.num_hours() < 24 {
-        format!("{}h ago", diff.num_hours())
+        format!("{}h", diff.num_hours())
     } else if diff.num_days() < 7 {
-        format!("{}d ago", diff.num_days())
+        format!("{}d", diff.num_days())
     } else {
-        dt.format("%Y-%m-%d").to_string()
+        dt.format("%m/%d").to_string()
     }
 }
 
