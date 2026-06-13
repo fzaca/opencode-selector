@@ -70,8 +70,6 @@ pub fn draw(f: &mut Frame, app: &App, area: Rect, theme: Theme) {
             Span::styled(context_label(app), theme.accent()),
             Span::styled("  sort: ", theme.dim()),
             Span::styled(sort_label(app.sort_by), theme.accent()),
-            Span::styled("  count: ", theme.dim()),
-            Span::styled(format!("{}", app.filtered_indices.len()), theme.accent()),
         ]);
         f.render_widget(Paragraph::new(context), chunks[0]);
 
@@ -88,15 +86,10 @@ fn should_show_mode_badge(app: &App) -> bool {
 }
 
 fn context_label(app: &App) -> String {
-    let proj = app
-        .current_project
-        .as_deref()
-        .and_then(|p| p.split('/').next_back())
-        .unwrap_or("?");
     if app.global_mode {
         "global".to_string()
     } else {
-        proj.to_string()
+        "cwd".to_string()
     }
 }
 
