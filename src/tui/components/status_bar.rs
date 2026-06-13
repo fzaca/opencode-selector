@@ -47,6 +47,7 @@ pub fn draw(f: &mut Frame, app: &App, area: Rect, theme: Theme) {
         f.render_widget(Paragraph::new(mode), chunks[0]);
 
         let context = Line::from(vec![
+            Span::styled("filter: ", theme.dim()),
             Span::styled(context_label(app), theme.accent()),
             Span::styled("  sort: ", theme.dim()),
             Span::styled(sort_label(app.sort_by), theme.accent()),
@@ -65,6 +66,7 @@ pub fn draw(f: &mut Frame, app: &App, area: Rect, theme: Theme) {
             .split(inner);
 
         let context = Line::from(vec![
+            Span::styled("filter: ", theme.dim()),
             Span::styled(context_label(app), theme.accent()),
             Span::styled("  sort: ", theme.dim()),
             Span::styled(sort_label(app.sort_by), theme.accent()),
