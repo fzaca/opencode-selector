@@ -62,8 +62,8 @@ impl FolderStore {
             std::fs::create_dir_all(parent)
                 .with_context(|| format!("failed to create directory {}", parent.display()))?;
         }
-        let content = toml::to_string_pretty(&self.data)
-            .context("failed to serialize folder store")?;
+        let content =
+            toml::to_string_pretty(&self.data).context("failed to serialize folder store")?;
         std::fs::write(&self.path, content)
             .with_context(|| format!("failed to write folder store {}", self.path.display()))?;
         Ok(())
@@ -116,10 +116,10 @@ impl FolderStore {
         if self.folder(folder_id).is_none() {
             anyhow::bail!("folder {} not found", folder_id);
         }
+        self.data.mappings.retain(|m| m.session_id != session_id);
         self.data
             .mappings
-            .retain(|m| m.session_id != session_id);
-        self.data.mappings.push(FolderMapping::new(session_id, folder_id));
+            .push(FolderMapping::new(session_id, folder_id));
         self.save()
     }
 
@@ -210,7 +210,9 @@ mod tests {
         let tmp = NamedTempFile::new().unwrap();
         {
             let mut store = FolderStore::open(tmp.path()).unwrap();
-            store.add_folder(Folder::new("personal", "Personal")).unwrap();
+            store
+                .add_folder(Folder::new("personal", "Personal"))
+                .unwrap();
             store.move_session("s1", "personal").unwrap();
         }
         let store = FolderStore::open(tmp.path()).unwrap();

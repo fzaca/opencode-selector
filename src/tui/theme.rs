@@ -35,9 +35,7 @@ impl Theme {
 
 impl Theme {
     pub fn default_style(self) -> Style {
-        Style::default()
-            .fg(self.foreground)
-            .bg(self.background)
+        Style::default().fg(self.foreground).bg(self.background)
     }
 
     pub fn accent(self) -> Style {

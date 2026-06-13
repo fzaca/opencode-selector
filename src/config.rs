@@ -21,9 +21,8 @@ pub struct Config {
 impl Config {
     /// Build the default configuration using standard directories.
     pub fn new() -> Result<Self> {
-        let selector_dirs = ProjectDirs::from("", "", "opencode-selector").context(
-            "failed to determine opencode-selector project directories",
-        )?;
+        let selector_dirs = ProjectDirs::from("", "", "opencode-selector")
+            .context("failed to determine opencode-selector project directories")?;
         let selector_config_dir = selector_dirs.config_dir().to_path_buf();
         let selector_data_dir = selector_dirs.data_dir().to_path_buf();
 
@@ -80,20 +79,18 @@ impl Config {
 
     /// Ensure that the selector configuration and data directories exist.
     pub fn ensure_dirs(&self) -> Result<()> {
-        std::fs::create_dir_all(&self.selector_config_dir)
-            .with_context(|| {
-                format!(
-                    "failed to create config directory {}",
-                    self.selector_config_dir.display()
-                )
-            })?;
-        std::fs::create_dir_all(&self.selector_data_dir)
-            .with_context(|| {
-                format!(
-                    "failed to create data directory {}",
-                    self.selector_data_dir.display()
-                )
-            })?;
+        std::fs::create_dir_all(&self.selector_config_dir).with_context(|| {
+            format!(
+                "failed to create config directory {}",
+                self.selector_config_dir.display()
+            )
+        })?;
+        std::fs::create_dir_all(&self.selector_data_dir).with_context(|| {
+            format!(
+                "failed to create data directory {}",
+                self.selector_data_dir.display()
+            )
+        })?;
         Ok(())
     }
 }
@@ -111,7 +108,17 @@ mod tests {
     #[test]
     fn config_paths_are_resolved() {
         let config = Config::new().unwrap();
-        assert!(config.selector_config_dir().to_string_lossy().contains("opencode-selector"));
-        assert!(config.opencode_db_path().to_string_lossy().contains("opencode.db"));
+        assert!(
+            config
+                .selector_config_dir()
+                .to_string_lossy()
+                .contains("opencode-selector")
+        );
+        assert!(
+            config
+                .opencode_db_path()
+                .to_string_lossy()
+                .contains("opencode.db")
+        );
     }
 }

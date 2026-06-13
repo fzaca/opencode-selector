@@ -1,12 +1,10 @@
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Rect},
     Frame,
+    layout::{Constraint, Direction, Layout, Rect},
 };
 
 use crate::tui::app::{App, InputMode, Screen};
-use crate::tui::components::{
-    folder_tree, help, preview, search_bar, session_list, status_bar,
-};
+use crate::tui::components::{folder_tree, help, preview, search_bar, session_list, status_bar};
 use crate::tui::theme::Theme;
 
 pub fn draw(f: &mut Frame, app: &mut App, theme: Theme) {
@@ -69,7 +67,10 @@ fn draw_modal(f: &mut Frame, app: &App, area: Rect, theme: Theme) {
     let (title, content) = match app.screen {
         Screen::ConfirmDelete => (
             " Confirm Delete ",
-            format!("{}\n\nPress y to confirm or Esc to cancel.", app.confirm_message),
+            format!(
+                "{}\n\nPress y to confirm or Esc to cancel.",
+                app.confirm_message
+            ),
         ),
         Screen::Rename => (
             " Rename Session ",

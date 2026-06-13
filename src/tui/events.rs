@@ -162,7 +162,8 @@ fn handle_search_key(app: &mut App, key: KeyEvent) -> io::Result<AppEvent> {
 }
 
 fn handle_preview_key(app: &mut App, key: KeyEvent) -> io::Result<AppEvent> {
-    if key.code == KeyCode::Esc || key.code == KeyCode::Char('q') || key.code == KeyCode::Char('p') {
+    if key.code == KeyCode::Esc || key.code == KeyCode::Char('q') || key.code == KeyCode::Char('p')
+    {
         app.screen = Screen::Main;
     }
     Ok(AppEvent::Continue)
@@ -190,11 +191,7 @@ fn handle_rename_key(
                     if let Err(e) = repo.rename_session(&session.id, &new_title) {
                         app.set_status(format!("Rename failed: {e}"));
                     } else {
-                        if let Some(s) = app
-                            .sessions
-                            .iter_mut()
-                            .find(|s| s.id == session.id)
-                        {
+                        if let Some(s) = app.sessions.iter_mut().find(|s| s.id == session.id) {
                             s.title = new_title;
                         }
                         app.apply_filter_and_sort();
@@ -223,10 +220,7 @@ fn handle_rename_key(
 fn start_delete(app: &mut App) {
     if let Some(session) = app.current_session().cloned() {
         app.pending_delete_id = Some(session.id.clone());
-        app.confirm_message = format!(
-            "Permanently delete '{}' ?",
-            session.display_title()
-        );
+        app.confirm_message = format!("Permanently delete '{}' ?", session.display_title());
         app.screen = Screen::ConfirmDelete;
         app.input_mode = InputMode::Confirm;
     }
@@ -298,9 +292,10 @@ fn handle_move_folder_key(
         KeyCode::Up | KeyCode::Char('k') => app.move_folder_up(),
         KeyCode::Down | KeyCode::Char('j') => app.move_folder_down(),
         KeyCode::Enter => {
-            if let (Some(session), Some(folder)) =
-                (app.current_session().cloned(), app.current_folder().cloned())
-            {
+            if let (Some(session), Some(folder)) = (
+                app.current_session().cloned(),
+                app.current_folder().cloned(),
+            ) {
                 if let Err(e) = store.move_session(&session.id, &folder.id) {
                     app.set_status(format!("Move failed: {e}"));
                 } else {

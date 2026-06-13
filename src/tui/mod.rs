@@ -5,4 +5,4 @@ pub mod theme;
 pub mod ui;
 
 pub use app::App;
-pub use events::{next_event, AppEvent};
+pub use events::{AppEvent, next_event};

@@ -1,8 +1,8 @@
 use ratatui::{
+    Frame,
     layout::Rect,
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph, Wrap},
-    Frame,
 };
 
 use crate::db::Session;
@@ -47,7 +47,12 @@ pub fn draw(f: &mut Frame, session: &Session, area: Rect, theme: Theme) {
         ]),
         Line::from(vec![
             Span::styled("Updated: ", theme.accent()),
-            Span::raw(session.updated_at.format("%Y-%m-%d %H:%M:%S UTC").to_string()),
+            Span::raw(
+                session
+                    .updated_at
+                    .format("%Y-%m-%d %H:%M:%S UTC")
+                    .to_string(),
+            ),
         ]),
         Line::from(vec![Span::raw("")]),
         Line::from(vec![Span::styled("First message:", theme.accent())]),

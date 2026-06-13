@@ -51,7 +51,11 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(sessions: Vec<Session>, folders: Vec<Folder>, mappings: HashMap<String, String>) -> Self {
+    pub fn new(
+        sessions: Vec<Session>,
+        folders: Vec<Folder>,
+        mappings: HashMap<String, String>,
+    ) -> Self {
         let mut app = Self {
             sessions,
             folders,
