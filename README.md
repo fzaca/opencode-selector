@@ -33,8 +33,14 @@ Download the latest release from the [releases page](https://github.com/fzaca/op
 ## Usage
 
 ```bash
-# Open the session selector
+# Open the session selector for the current project
 opcs
+
+# Show all sessions across all projects
+opcs --global
+
+# Enable folders
+opcs --folders
 
 # Launch a specific session directly
 opcs session ses_xxx
@@ -56,26 +62,44 @@ opcs --help
 | `p` | Open full-screen preview |
 | `n` | Create a new opencode session |
 | `r` | Rename session |
-| `m` | Move session to folder |
+| `m` | Move session to folder (folders enabled) |
 | `d` | Archive session |
 | `D` | Delete session (with confirmation) |
 | `P` | Toggle current project / all projects |
-| `a` | Jump to All folder |
+| `F` | Toggle folder system |
+| `a` | Jump to All folder (folders enabled) |
+| `N` | Create new folder (folders enabled) |
 | `?` | Show help |
 | `q` / `Esc` | Quit / go back |
 
 Mouse interaction is also supported.
 
+## Project-aware mode
+
+When you run `opcs` inside a project directory, it shows only the sessions for
+that project. Press `P` to switch to all projects.
+
+## Global mode
+
+Run `opcs --global` or `opcs global` to see every session across all projects.
+In this mode folders are disabled, and opening a session changes to that
+project's directory first.
+
 ## Folder system
 
-Sessions can be organized into folders. Folder metadata is stored in `~/.config/opencode-selector/folders.toml`, completely separate from opencode's database.
+The folder system is **disabled by default**. Enable it with `opcs --folders`
+or by setting `folders_enabled = true` in
+`~/.config/opencode-selector/config.toml`.
 
-Default folders:
+Folder metadata is stored in `~/.config/opencode-selector/folders.toml`,
+completely separate from opencode's database.
 
-- `Inbox`
+Default folders (when enabled):
+
+- `All`
 - `Archive`
 
-Create, rename, and delete folders directly from the TUI.
+Create, rename, and delete custom folders directly from the TUI.
 
 ## Development
 
