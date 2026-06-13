@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [0.1.0] - 2026-06-13
 
 ### Bug Fixes
 
@@ -16,10 +16,8 @@ All notable changes to this project will be documented in this file.
 - Add agent-facing project guidelines
 - Add project overview and usage
 - Add contribution guidelines and code of conduct
-- Add opencode-selector project skills
 - Add initial changelog
 - Correct CLI examples
-- Document project skills location
 - Update usage for global mode and optional folders
 - Update unreleased section
 
