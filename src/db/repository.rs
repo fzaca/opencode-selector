@@ -136,7 +136,7 @@ impl SessionRepository {
                     model_name: parse_model_name(row.get(5)?),
                     created_at: parse_time(row.get(6)?),
                     updated_at: parse_time(row.get(7)?),
-                    summary_files: row.get(8)?,
+                    summary_files: row.get::<_, Option<i64>>(8)?,
                     first_message_preview,
                     messages: Vec::new(),
                 })
@@ -188,7 +188,7 @@ impl SessionRepository {
                     model_name: parse_model_name(row.get(5)?),
                     created_at: parse_time(row.get(6)?),
                     updated_at: parse_time(row.get(7)?),
-                    summary_files: row.get(8)?,
+                    summary_files: row.get::<_, Option<i64>>(8)?,
                     first_message_preview,
                     messages: Vec::new(),
                 })

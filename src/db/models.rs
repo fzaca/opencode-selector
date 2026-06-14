@@ -13,7 +13,7 @@ pub struct Session {
     pub model_name: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-    pub summary_files: i64,
+    pub summary_files: Option<i64>,
     pub first_message_preview: Option<String>,
     pub messages: Vec<(String, String)>,
 }

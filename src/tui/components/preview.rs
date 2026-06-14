@@ -31,7 +31,14 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect, theme: Theme) {
         meta_line("Project", &session.project_name, theme),
         meta_line("Agent", session.agent.as_deref().unwrap_or("-"), theme),
         meta_line("Model", session.model_name.as_deref().unwrap_or("-"), theme),
-        meta_line("Files changed", &session.summary_files.to_string(), theme),
+        meta_line(
+            "Files changed",
+            &session
+                .summary_files
+                .map(|f| f.to_string())
+                .unwrap_or_else(|| "-".to_string()),
+            theme,
+        ),
         meta_line(
             "Updated",
             &session
