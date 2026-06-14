@@ -42,6 +42,8 @@ pub enum Command {
     },
     /// Open the selector in global mode (all projects, no folders).
     Global,
+    /// Update opencode-selector to the latest version.
+    Upgrade,
 }
 
 impl Cli {

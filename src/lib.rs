@@ -5,3 +5,4 @@ pub mod folders;
 pub mod opencode;
 pub mod opencode_theme;
 pub mod tui;
+pub mod upgrade;

@@ -11,28 +11,43 @@ env:
 jobs:
   release:
     name: Build release artifacts
+    strategy:
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+          - aarch64-unknown-linux-gnu
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross-compilation dependencies (aarch64)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
 
       - name: Cache cargo dependencies
         uses: Swatinem/rust-cache@v2
 
       - name: Build release binary
-        run: cargo build --release
+        run: cargo build --release --target ${{ matrix.target }}
 
       - name: Package binary
         run: |
           mkdir -p dist
-          cp target/release/opcs dist/opcs-linux-x64
-          chmod +x dist/opcs-linux-x64
+          case "${{ matrix.target }}" in
+            x86_64-unknown-linux-gnu)  SUFFIX="x86_64-linux" ;;
+            aarch64-unknown-linux-gnu)  SUFFIX="aarch64-linux" ;;
+          esac
+          cp target/${{ matrix.target }}/release/opcs "dist/opcs-${SUFFIX}"
+          chmod +x "dist/opcs-${SUFFIX}"
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/opcs-linux-x64
+          files: dist/opcs-*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

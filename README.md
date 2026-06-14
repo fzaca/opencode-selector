@@ -18,6 +18,24 @@
 
 ## Installation
 
+### Quick install (Linux)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/fzaca/opencode-selector/master/scripts/install.sh | bash
+```
+
+This downloads the latest prebuilt binary for your architecture (x86_64 or ARM64) and installs it to `~/.local/bin/opcs` or `/usr/local/bin/opcs`.
+
+### Upgrade
+
+The installed binary includes an upgrade command:
+
+```bash
+opcs upgrade
+```
+
+Or re-run the install script — it always fetches the latest version.
+
 ### From source
 
 ```bash

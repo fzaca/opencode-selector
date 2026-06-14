@@ -46,6 +46,10 @@ fn main() -> Result<()> {
             list_sessions(&config)?;
             return Ok(());
         }
+        Some(Command::Upgrade) => {
+            opencode_selector::upgrade::run()?;
+            return Ok(());
+        }
         Some(Command::Global) | None => {}
     }
 
