@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.5.0] - 2026-06-13
+
+### Features
+- Lazy-load session messages on preview open
+- Full preview with all conversation messages and role headers
+- Scrollable preview with keyboard (↑/↓/k/j, PgUp/PgDn, Home/End) and mouse
+- Mouse scroll support in session list and preview
+- Visual scrollbar on session list
+- Selected session indicator (▶)
+- Improved status bar with position counter, sort mode, search/project info
+- Consistent background fill across all screens
+
+### Bug Fixes
+- Remove unused methods from Theme ([913e032](913e032))
+
 ## [0.4.0] - 2026-06-13
 
 ### Features
