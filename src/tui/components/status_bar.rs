@@ -31,7 +31,7 @@ pub fn draw(f: &mut Frame, app: &App, area: Rect, theme: Theme) {
     let mode_badge = mode_label(app);
     let pos_label = position_label(app);
 
-    let left_width = (mode_badge.chars().count() as u16 + 2).max(8);
+    let left_width = (mode_badge.chars().count() as u16 + 4).max(8);
 
     let right_width = shortcut_width(app);
 
@@ -45,7 +45,7 @@ pub fn draw(f: &mut Frame, app: &App, area: Rect, theme: Theme) {
         .split(inner);
 
     let mode = Line::from(vec![Span::styled(
-        format!(" {} ", mode_badge),
+        format!(" {}  ", mode_badge),
         theme.badge(),
     )]);
     f.render_widget(Paragraph::new(mode), chunks[0]);

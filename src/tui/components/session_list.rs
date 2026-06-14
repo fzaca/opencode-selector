@@ -3,7 +3,10 @@ use ratatui::{
     layout::{Alignment, Rect},
     style::Modifier,
     text::{Line, Span},
-    widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph},
+    widgets::{
+        Block, BorderType, Borders, List, ListItem, ListState, Paragraph, Scrollbar,
+        ScrollbarOrientation, ScrollbarState,
+    },
 };
 
 use crate::db::Session;
@@ -30,7 +33,23 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect, theme: Theme) {
         return;
     }
 
-    let inner_width = area.width.saturating_sub(6).max(10) as usize;
+    let inner = block.inner(area);
+    let list_height = inner.height as usize;
+    let total = app.filtered_indices.len();
+
+    let scrollbar_width = 1u16;
+    let list_area = Rect {
+        width: inner.width.saturating_sub(scrollbar_width).max(10),
+        ..inner
+    };
+    let scrollbar_area = Rect {
+        x: list_area.x + list_area.width,
+        y: inner.y,
+        width: scrollbar_width,
+        height: inner.height,
+    };
+
+    let inner_width = list_area.width.saturating_sub(2).max(10) as usize;
 
     let items: Vec<ListItem> = app
         .filtered_indices
@@ -57,11 +76,22 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect, theme: Theme) {
 
     let mut state = ListState::default().with_selected(Some(app.selected_session));
     let list = List::new(items)
-        .block(block)
         .highlight_style(theme.selected())
         .highlight_symbol("");
 
-    f.render_stateful_widget(list, area, &mut state);
+    f.render_widget(block, area);
+    f.render_stateful_widget(list, list_area, &mut state);
+
+    if total > list_height {
+        let mut scroll_state = ScrollbarState::new(total).position(app.selected_session);
+        f.render_stateful_widget(
+            Scrollbar::new(ScrollbarOrientation::VerticalRight)
+                .thumb_style(theme.dim().fg(theme.accent_dim))
+                .track_style(theme.dim()),
+            scrollbar_area,
+            &mut scroll_state,
+        );
+    }
 }
 
 fn session_item<'a>(

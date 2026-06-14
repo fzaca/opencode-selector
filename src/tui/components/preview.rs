@@ -1,7 +1,7 @@
 use ratatui::{
     Frame,
     layout::{Alignment, Rect},
-    style::Modifier,
+    style::Stylize,
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, Paragraph, Wrap},
 };
@@ -24,7 +24,8 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect, theme: Theme) {
 
     let inner = block.inner(area);
     let available = inner.height as usize;
-    let mut lines: Vec<Line> = vec![
+
+    let mut lines = vec![
         meta_line("ID", &session.id, theme),
         meta_line("Slug", &session.slug, theme),
         meta_line("Project", &session.project_name, theme),
@@ -44,42 +45,26 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect, theme: Theme) {
     lines.push(Line::raw(""));
 
     if session.messages.is_empty() {
-        if session.first_message_preview.is_some() {
-            lines.push(Line::styled("(loading messages...)", theme.dim()));
+        if let Some(ref preview) = session.first_message_preview {
+            lines.push(Line::styled("Messages:", theme.accent()));
+            for line in preview.lines() {
+                lines.push(Line::raw(line.to_string()));
+            }
         } else {
-            lines.push(Line::styled("(no messages)", theme.dim()));
+            lines.push(Line::styled("(loading messages...)", theme.dim()));
         }
     } else {
-        for (role, text) in session.messages.iter() {
-            let is_user = role == "user";
-            let role_style = if is_user {
-                theme.user_message()
+        for (role, text) in &session.messages {
+            let role_style = if role == "assistant" {
+                theme.success().dim()
             } else {
-                theme.assistant_message()
+                theme.accent().dim()
             };
-            let role_label = if is_user { " YOU " } else { " AI  " };
-
-            let header = Line::from(vec![
-                Span::styled(" │ ", theme.gutter()),
-                Span::styled(format!("──{role_label}──"), role_style),
-            ]);
-            lines.push(header);
-
+            lines.push(Line::styled(format!("── {role} ──"), role_style));
             for line in text.lines() {
-                lines.push(Line::from(vec![
-                    Span::styled(" │ ", theme.gutter()),
-                    Span::raw(line.to_string()),
-                ]));
+                lines.push(Line::raw(line.to_string()));
             }
-
-            if is_user {
-                lines.push(Line::styled(
-                    " │",
-                    theme.gutter().add_modifier(Modifier::DIM),
-                ));
-            } else {
-                lines.push(Line::styled(" │", theme.gutter()));
-            }
+            lines.push(Line::raw(""));
         }
     }
 
@@ -101,9 +86,8 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect, theme: Theme) {
     );
 
     if total > available {
-        let pos = format!(" {}:{} ", scroll + 1, total);
         f.render_widget(
-            Paragraph::new(pos)
+            Paragraph::new(format!(" {}:{} ", scroll + 1, total))
                 .style(theme.dim())
                 .alignment(Alignment::Right),
             Rect {
@@ -118,7 +102,7 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect, theme: Theme) {
 
 fn meta_line<'a>(label: &str, value: &str, theme: Theme) -> Line<'a> {
     Line::from(vec![
-        Span::styled(format!("  {label}: "), theme.accent()),
+        Span::styled(format!("{label}: "), theme.accent()),
         Span::raw(value.to_string()),
     ])
 }
