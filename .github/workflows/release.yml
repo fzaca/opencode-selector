@@ -5,12 +5,35 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  release:
-    name: Build release artifacts
+  create-release:
+    name: Create release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create.outputs.upload_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create release
+        id: create
+        uses: ncipollo/release-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          makeLatest: true
+          generateReleaseNotes: true
+
+  build:
+    name: Build ${{ matrix.target }}
+    needs: create-release
     strategy:
       matrix:
         target:
@@ -45,9 +68,10 @@ jobs:
           cp target/${{ matrix.target }}/release/opcs "dist/opcs-${SUFFIX}"
           chmod +x "dist/opcs-${SUFFIX}"
 
-      - name: Upload release assets
-        uses: softprops/action-gh-release@v2
+      - name: Upload release asset
+        uses: ncipollo/release-action@v1
         with:
-          files: dist/opcs-*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref_name }}
+          artifacts: dist/opcs-*
+          allowUpdates: true
